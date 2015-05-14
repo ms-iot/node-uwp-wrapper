@@ -14,6 +14,6 @@ Prerequisites:
 
 Steps:
 
-    * Set node_dir in build.bat to your Node.js clone
+    * Set node_dir in build.bat to the path of your Node.js clone
     * Set release_dir if desired (optional)
-    * `build.bat [x86|x64|arm] [copyrelease]`
+    * build.bat [x86|x64|arm] [copyrelease]
