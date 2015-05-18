@@ -1,5 +1,7 @@
 @echo off
 
+set batch_dir=%~dp0
+
 set copyrelease=
 set target_arch=
 set target_arch=
@@ -31,7 +33,7 @@ set buildall=1
 :arm
 @rem build node.dll
 call "%node_dir%\vcbuild.bat" arm chakra uwp-dll withoutssl
-cd %~dp0
+cd %batch_dir%
 @rem build nodeuwp.dll
 set WindowsSdkDir=%programfiles(x86)%\Windows Kits\10\
 msbuild nodeuwp.sln /p:configuration=release /p:platform=arm
@@ -46,7 +48,7 @@ if not defined buildall goto end
 :x86
 @rem build node.dll
 call "%node_dir%\vcbuild.bat" x86 chakra uwp-dll withoutssl
-cd %~dp0
+cd %batch_dir%
 @rem build nodeuwp.dll
 set WindowsSdkDir=%programfiles(x86)%\Windows Kits\10\
 msbuild nodeuwp.sln /p:configuration=release /p:platform=x86
@@ -61,7 +63,7 @@ if not defined buildall goto end
 :x64
 @rem build node.dll
 call "%node_dir%\vcbuild.bat" x64 chakra uwp-dll withoutssl
-cd %~dp0
+cd %batch_dir%
 @rem build nodeuwp.dll
 set WindowsSdkDir=%programfiles(x86)%\Windows Kits\10\
 msbuild nodeuwp.sln /p:configuration=release /p:platform=x64
