@@ -39,7 +39,7 @@ using namespace Windows::Data::Xml::Dom;
 using namespace Platform::Collections;
 
 // startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
-// It's updated through Node.js UAP project properties and packaged in the project appx.
+// It's updated through Node.js UWP project properties and packaged in the project appx.
 #define STARTUP_FILE L"startupinfo.xml"
 
 std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)

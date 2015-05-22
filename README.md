@@ -9,11 +9,12 @@ Prerequisites:
     * Windows 10 (latest)
     * Python 2.6 or 2.7
     * Visual Studio 2015 (RC or later)
-    * Windows 10 Tools (Bundled in Visual Studio 2015, or install separately.)
+    * Windows 10 Tools (Bundled in Visual Studio 2015, or install separately)
 	* Clone Node.js from https://github.com/microsoft/node
 
 Steps:
 
-    * Set node_dir in build.bat to the path of your Node.js clone
-    * Set release_dir if desired (optional)
-    * build.bat [x86|x64|arm] [copyrelease]
+    * Open cmd window
+    * Set node_dir to the path of your Node.js clone
+    * Set release_dir if desired (optional if copyrelease is not used)
+    * Run "build.bat [x86|x64|arm] [copyrelease]"
