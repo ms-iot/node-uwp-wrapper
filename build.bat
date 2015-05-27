@@ -41,7 +41,7 @@ set buildall=1
 
 :arm
 @rem build node.dll
-call "%node_dir%\vcbuild.bat" arm chakra uwp-dll
+call "%node_dir%\vcbuild.bat" arm chakra uwp-dll openssl-no-asm
 pushd %batch_dir%
 @rem build nodeuwp.dll
 set WindowsSdkDir=%programfiles(x86)%\Windows Kits\10\
