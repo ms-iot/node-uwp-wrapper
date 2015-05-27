@@ -69,7 +69,7 @@ namespace nodeuwp
 		String^ pstr = ref new String(wcstring);
 
 		// Append console logs to file
-		IAsyncAction^ Action = FileIO::AppendTextAsync(m_file, pstr);
+		IAsyncAction^ Action = FileIO::AppendTextAsync(m_file, pstr + "\r\n");
 		create_task(Action).then([this](){}).wait(); // wait is required to log messages sequentially.
 	}
 }
