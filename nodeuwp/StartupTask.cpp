@@ -27,6 +27,7 @@
 #include <ppltasks.h>
 #include "v8.h"
 #include "node.h"
+#include "Logger.h"
 
 using namespace nodeuwp;
 
@@ -115,6 +116,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 		getStartupInfoXml.then([=](XmlDocument^ startupInfoXml)
 		{
 			std::vector<std::shared_ptr<char>> argumentVector;
+			bool useLogger = true; //TODO: set value from a property in Visual Studio
 
 			std::shared_ptr<char> argChar = PlatformStringToChar(L" ", 1);
 			argumentVector.push_back(argChar);
@@ -138,7 +140,14 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 				argv.get()[i] = (argumentVector[i]).get();
 			}
 
-			node::Start(argc, argv.get());
+			if (!useLogger)
+			{
+				node::Start(argc, argv.get());
+			}
+			else
+			{
+				node::Start(argc, argv.get(), &Logger::GetInstance());
+			}
 			deferral->Complete();
 		});
 	});
