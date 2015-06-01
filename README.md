@@ -14,30 +14,63 @@ Prerequisites:
 
 Steps:
 
-    * Open cmd window
-    * Set node_dir to the path of your Node.js clone
-    * Set release_dir if desired (optional if copyrelease is not used)
-    * Run "build.bat [x86|x64|arm] [copyrelease]"
+* Open cmd window
+* Set node_dir to the path of your Node.js clone
+* Set release_dir if desired (optional if copyrelease is not used)
+* Run "build.bat [x86|x64|arm] [copyrelease]"
 	
 ##To test:
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
 
-    * Clone Node.js from https://github.com/microsoft/node
-	* Install the NTVS IoT Extension using the steps [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm) and create a new Node.js (Windows Universal) project
-    * Copy &lt;Node.js clone path&gt;\tests to &lt;Node.js UWP project path (location of .njsproj file)&gt;\tests
-    * Right click on the test you want to run and select "Set as Node.js Startup File". The file text will be made bold (see test-assert.js example below)
-      ![Set test as Startup File]({{site.baseurl}}/images/test-startup-file.png)
-    * Press F5 (or click on Debug->Start Debugging menu) to run the test
-    * Console output can be redirected to file. You can view the logs on the device in c:\Users\DefaultAccount\AppData\Local\Packages\&lt;Your app ID (get it from VS build logs)&gt;\LocalState\nodeuwp.log
+* Clone Node.js from [https://github.com/microsoft/node](https://github.com/microsoft/node)
+* Install the NTVS IoT Extension using the steps [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm) and create a new Node.js (Windows Universal) project
+* Copy <Node.js clone path>\tests to <Node.js UWP project path (location of .njsproj file)>\tests
+* Right click on the test you want to run and select "Set as Node.js Startup File". The file text will be made bold (see test-assert.js example below)
+
+  ![Set test as Startup File](./images/test-startup-file.png)
+
+* Press F5 (or click on Debug->Start Debugging menu) to run the test
+* Console output can be redirected to file. You can view the logs on the device in C:\Users\DefaultAccount\AppData\Local\Packages\&lt;Your app ID (get it from VS build logs)&gt;\LocalState\nodeuwp.log
 	
-##Node.js compatibility with UWP
-The following API's are not supported in Node.js UWP:
+##Node.js API compatibility with UWP
 
-    * Child Processes
-    * Cluster
-    * Debugger
-    * TTY
+API | Supported
+--- | ---
+Assert | Yes
+Buffer | Yes
+Child Processes | **No**
+Cluster | **No**
+Console | **No** (output can optionally be redirected to file)
+Crypto | Yes
+Debugger | **No**
+DNS | Yes
+Domain | Yes
+Events | Yes
+File System | Yes
+Globals | Yes
+HTTP | Yes
+HTTPS | Yes
+Modules | Yes
+Net | Yes
+OS | Yes
+Path | Yes
+Process | Yes
+Punycode | Yes
+Query Strings | Yes
+Readline | Yes
+REPL | Yes
+Smalloc | Yes
+Stream | Yes
+String Decoder | Yes
+Timers | Yes
+TLS/SSL | Yes
+TTY | **No**
+UDP/Datagram | Yes
+URL | Yes
+Utilities | Yes
+VM | Yes
+ZLIB | Yes
 
-There are a few other limitations in other modules. For example, the [fs](https://nodejs.org/api/fs.html) module can only access files within its the UWP package or within paths declared in the [package capabilities](https://msdn.microsoft.com/en-us/library/windows/apps/hh464936.aspx).
+**Note:** There may be some limitations in supported modules. For example, the [fs](https://nodejs.org/api/fs.html) module can only access files within its the UWP package or within paths declared in its [package capabilities](https://msdn.microsoft.com/en-us/library/windows/apps/hh464936.aspx).
 
-Detailed documentation on which API's are supported in Node.js UWP can be found [here]({{site.baseurl}}/compatibility.xlsx).
+Detailed documentation on which API's are supported in Node.js UWP can be found [here](./compatibility.xlsx).
