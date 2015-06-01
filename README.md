@@ -24,7 +24,7 @@ Follow the steps below to run [tests](https://github.com/joyent/node/tree/master
 
 * Clone Node.js from [https://github.com/microsoft/node](https://github.com/microsoft/node)
 * Install the NTVS IoT Extension using the steps [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm) and create a new Node.js (Windows Universal) project
-* Copy <Node.js clone path>\tests to <Node.js UWP project path (location of .njsproj file)>\tests
+* Copy &lt;Node.js clone path&gt;\tests to &lt;Node.js UWP project path (location of .njsproj file)&gt;\tests
 * Right click on the test you want to run and select "Set as Node.js Startup File". The file text will be made bold (see test-assert.js example below)
 
   ![Set test as Startup File](./images/test-startup-file.png)
