@@ -2,7 +2,7 @@
 This project is a Universal Windows Platform (UWP) application that wraps Node.js and enables deployment to Windows IoT Core devices from Visual Studio.
 The application is packaged into the [NTVS IoT Extension (Beta)](https://github.com/ms-iot/ntvsiot) installer.
 
-##To build:
+##To build
 
 Prerequisites:
 
@@ -19,7 +19,7 @@ Steps:
 * Set release_dir if desired (optional if copyrelease is not used)
 * Run "build.bat [x86|x64|arm] [copyrelease]"
 	
-##To test:
+##To test
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
 
 * Clone Node.js from [https://github.com/microsoft/node](https://github.com/microsoft/node)
@@ -40,37 +40,39 @@ Assert | Yes
 Buffer | Yes
 Child Processes | **No**
 Cluster | **No**
-Console | **No** (output can optionally be redirected to file)
-Crypto | Yes
+Console | Output can optionally be redirected to file
+Crypto | In testing
 Debugger | **No**
 DNS | Yes
 Domain | Yes
 Events | Yes
-File System | Yes
-Globals | Yes
+File System | In testing
+Globals | In testing
 HTTP | Yes
-HTTPS | Yes
+HTTPS | In testing
 Modules | Yes
 Net | Yes
-OS | Yes
+OS | In testing
 Path | Yes
-Process | Yes
+Process | In testing
 Punycode | Yes
-Query Strings | Yes
+Query Strings | In testing
 Readline | Yes
 REPL | Yes
 Smalloc | Yes
-Stream | Yes
-String Decoder | Yes
+Stream | In testing
+String Decoder | In testing
 Timers | Yes
-TLS/SSL | Yes
+TLS/SSL | In testing
 TTY | **No**
 UDP/Datagram | Yes
 URL | Yes
-Utilities | Yes
+Utilities | In testing
 VM | Yes
 ZLIB | Yes
 
-**Note:** There may be some limitations in supported modules. For example, the [fs](https://nodejs.org/api/fs.html) module can only access files within its the UWP package or within paths declared in its [package capabilities](https://msdn.microsoft.com/en-us/library/windows/apps/hh464936.aspx).
+**Note:** 
+There may be some limitations in supported modules. For example, the [fs](https://nodejs.org/api/fs.html) module can only access files within its the UWP package or within paths declared in its [package capabilities](https://msdn.microsoft.com/en-us/library/windows/apps/hh464936.aspx).
+'In testing' in the Supported column means the API may work for the most part but some failures may be seen (see compatibility.xlsx below). 
 
-Detailed documentation on which API's are supported in Node.js UWP can be found [here](./compatibility.xlsx).
+A detailed list with methods in the API and their pass/fail status can be seen [here](./compatibility.xlsx).
