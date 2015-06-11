@@ -4,10 +4,11 @@ The application is packaged into the [NTVS IoT Extension (Beta)](https://github.
 to create Node.js applications and easily deploy and debug them on Windows IoT Core devices. During deployment, the extension will create a UWP package that
 contains:
 
-* This UWP application (nodeuwp.dll).
-* Node.dll (code [here](https://github.com/Microsoft/node-msft/tree/ch0.12.2-uwp)). This is Node.exe (renamed) with a few differences: 
+* nodeuwp.dll: That's this UWP application.
+* node.dll (code [here](https://github.com/Microsoft/node-msft/tree/ch0.12.2-uwp)): This is Node.exe (renamed) with a few differences: 
   * Code that not allowed in a UWP app container is disabled.
   * Code links to onecore.lib (instead of legacy DLL's like kernel32.dll, etc.) to enable it to run on Windows IoT Core.
+* uwp.node (code [here](https://github.com/Microsoft/node-uwp)): This is the addon that allows you to access UWP namespaces from Node.js code.
 * Your Node.js code and other files you choose to package.
 
 To get started, take a look at the "Hello World" sample [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm).
@@ -27,9 +28,11 @@ Steps:
 * Open cmd window
 * Set node_dir to the path of your Node.js clone
 * Set release_dir if desired (optional if copyrelease is not used)
-* Run "build.bat [x86|x64|arm] [copyrelease]". copyrelease can be used to choose the release directory where nodeuwp.dll and node.dll will be copied.
-  If no platform is provided, all platforms (x86, x64, and ARM) will be built.
-	
+* Run "build.bat [x86|x64|arm] [copyrelease] [builduwpaddon]". 
+  * If no platform is provided, all platforms (x86, x64, and ARM) will be built.
+  * copyrelease can be used to choose the release directory where nodeuwp.dll, node.dll, and uwp.node will be copied.
+  * builduwpaddon can be used to build the uwp addon.
+  
 ##Running Node.js tests
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
 
