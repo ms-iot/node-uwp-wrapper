@@ -43,6 +43,10 @@ using namespace Platform::Collections;
 // It's updated through Node.js UWP project properties and packaged in the project appx.
 #define STARTUP_FILE L"startupinfo.xml"
 
+// If --use-logger argument is passed to to Node, console.* methods will redirect
+// output to a file (nodeuwp.log) in this applications local storage folder.
+bool useLogger = false;
+
 std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
 {
 	// Calculate the needed buffer size
@@ -90,11 +94,24 @@ void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeLi
 		size_t pos = 0;
 		std::wstring token;
 		std::shared_ptr<char> argChar;
-		while ((pos = s.find(delimiter)) != std::wstring::npos) {
+		while ((pos = s.find(delimiter)) != std::wstring::npos) 
+		{
 			token = s.substr(0, pos);
 			argChar = PlatformStringToChar(token.c_str(), token.size());
-			argVector.push_back(argChar);
+			if (0 == token.compare(L"--use-logger"))
+			{
+				useLogger = true;
+			}
+			else
+			{
+				argVector.push_back(argChar);
+			}			
 			s.erase(0, pos + delimiter.length());
+		}
+		if (0 == s.compare(L"--use-logger"))
+		{
+			useLogger = true;
+			return;
 		}
 		argChar = PlatformStringToChar(s.c_str(), s.size());
 		argVector.push_back(argChar);
@@ -116,7 +133,6 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 		getStartupInfoXml.then([=](XmlDocument^ startupInfoXml)
 		{
 			std::vector<std::shared_ptr<char>> argumentVector;
-			bool useLogger = true; //TODO: set value from a property in Visual Studio
 
 			std::shared_ptr<char> argChar = PlatformStringToChar(L" ", 1);
 			argumentVector.push_back(argChar);
