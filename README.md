@@ -1,6 +1,17 @@
 ##Node.js UWP
 This project is a Universal Windows Platform (UWP) application that wraps Node.js and enables deployment to Windows IoT Core devices from Visual Studio.
-The application is packaged into the [NTVS IoT Extension (Beta)](https://github.com/ms-iot/ntvsiot) installer.
+The application is packaged into the [NTVS IoT Extension (Beta)](https://github.com/ms-iot/ntvsiot) installer. The NTVS IoT Extension gives you the ability
+to create Node.js applications and easily deploy and debug them on Windows IoT Core devices. During deployment, the extension will create a UWP package that
+contains:
+
+* nodeuwp.dll: That's this UWP application.
+* node.dll (code [here](https://github.com/Microsoft/node-msft/tree/ch0.12.2-uwp)): This is Node.exe (renamed) with a few differences: 
+  * Code that not allowed in a UWP app container is disabled.
+  * Code links to onecore.lib (instead of legacy DLL's like kernel32.dll, etc.) to enable it to run on Windows IoT Core.
+* uwp.node (code [here](https://github.com/Microsoft/node-uwp)): This is the addon that allows you to access UWP namespaces from Node.js code.
+* Your Node.js code and other files you choose to package.
+
+To get started, take a look at the "Hello World" sample [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm).
 
 ##To build
 
@@ -17,9 +28,12 @@ Steps:
 * Open cmd window
 * Set node_dir to the path of your Node.js clone
 * Set release_dir if desired (optional if copyrelease is not used)
-* Run "build.bat [x86|x64|arm] [copyrelease]"
-	
-##To test
+* Run "build.bat [x86|x64|arm] [copyrelease] [builduwpaddon]". 
+  * If no platform is provided, all platforms (x86, x64, and ARM) will be built.
+  * copyrelease can be used to choose the release directory where nodeuwp.dll, node.dll, and uwp.node will be copied.
+  * builduwpaddon can be used to build the uwp addon.
+  
+##Running Node.js tests
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
 
 * Clone Node.js from [https://github.com/microsoft/node](https://github.com/microsoft/node)
@@ -30,7 +44,7 @@ Follow the steps below to run [tests](https://github.com/joyent/node/tree/master
   ![Set test as Startup File](./images/test-startup-file.png)
 
 * Press F5 (or click on Debug->Start Debugging menu) to run the test
-* Console output can be redirected to file. You can view the logs on the device in C:\Users\DefaultAccount\AppData\Local\Packages\&lt;Your app ID (get it from VS build logs)&gt;\LocalState\nodeuwp.log
+* Console output can be redirected to file. You can view the logs on the device in C:\Users\DefaultAccount\AppData\Local\Packages\ &lt;Your app ID (get it from VS build logs)&gt;\LocalState\nodeuwp.log
 	
 ##Node.js API compatibility with UWP
 
