@@ -5,7 +5,7 @@ to create Node.js applications and easily deploy and debug them on Windows IoT C
 contains:
 
 * nodeuwp.dll: That's this UWP application.
-* node.dll (code [here](https://github.com/Microsoft/node-msft/tree/ch0.12.2-uwp)): This is Node.exe (renamed) with a few differences: 
+* node.dll (GitHub link coming soon): This is Node.exe (renamed) with a few differences: 
   * Code that not allowed in a UWP app container is disabled.
   * Code links to onecore.lib (instead of legacy DLL's like kernel32.dll, etc.) to enable it to run on Windows IoT Core.
 * uwp.node (code [here](https://github.com/Microsoft/node-uwp)): This is the addon that allows you to access UWP namespaces from Node.js code.
