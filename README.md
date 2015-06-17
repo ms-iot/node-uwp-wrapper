@@ -27,12 +27,12 @@ Prerequisites:
 Steps:
 
 * Open cmd window
-* Set node_dir to the path of your Node.js clone
+* Set node_dir to the path of your Node.js clone (a *-uwp branch needs to be checked out)
 * Set release_dir if desired (optional if copyrelease is not used)
-* Run "build.bat [x86|x64|arm] [copyrelease] [builduwpaddon]". 
-  * If no platform is provided, all platforms (x86, x64, and ARM) will be built.
-  * copyrelease can be used to choose the release directory where nodeuwp.dll, node.dll, and uwp.node will be copied.
-  * builduwpaddon can be used to build the uwp addon.
+* Run "build.bat [x86|x64|arm] [copyrelease] [builduwpaddon]"
+  * If no platform is provided, all platforms (x86, x64, and ARM) will be built
+  * copyrelease can be used to choose the release directory where nodeuwp.dll, node.dll, and uwp.node will be copied
+  * builduwpaddon can be used to build the uwp addon
   
 ##Running Node.js tests
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
