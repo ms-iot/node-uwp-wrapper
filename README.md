@@ -1,4 +1,4 @@
-##Node.js UWP
+##Node.js UWP Wrapper
 This project is a Universal Windows Platform (UWP) application that wraps Node.js and enables deployment to Windows IoT Core devices from Visual Studio.
 The application is packaged into the [NTVS IoT Extension (Beta)](https://github.com/ms-iot/ntvsiot) installer. The NTVS IoT Extension gives you the ability
 to create Node.js applications and easily deploy and debug them on Windows IoT Core devices. During deployment, the extension will create a UWP package that
