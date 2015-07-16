@@ -1,5 +1,45 @@
 @echo off
 
+@rem This batch file builds and signs binaries that are deployed by NTVS IoT Extension (https://github.com/ms-iot/ntvsiot).
+@rem List of binaries:
+@rem 1. node.dll (https://github.com/Microsoft/node - in *uwp branches)
+@rem 2. nodeuwp.dll (https://github.com/ms-iot/node-uwp-wrapper)
+@rem 3. uwp.node (https://github.com/Microsoft/node-uwp)
+
+@rem To build successfully, clones of all the above projects are required.
+
+@rem Usage:
+@rem build.bat [x86 | ARM | x64] [builduwpaddon] [copyrelease] [sign] [onlysign]
+
+@rem If processor architecture isn't specified all architectures will be built
+@rem To use the 'sign' option, builduwpaddon and copyrelease need to be included
+@rem onlysign can be the only option provided if the release binaries already exist (release_dir needs to be set)
+
+@rem Example:
+@rem set node_dir=c:\repos\node_clone
+@rem set uwpaddon_dir=c:\repos\uwpaddon_clone
+@rem set release_dir=c:\release
+@rem build.bat ARM builduwpaddon copyrelease
+
+@rem The result of the command above will be:
+@rem c:\release\arm\node.dll
+@rem               \nodeuwp.dll
+@rem 			   \uwp.node
+
+if /i "%1"=="onlysign" (
+  if not defined release_dir (
+    echo Error: release_dir needs to be set when using onlysign.
+    goto end
+  )
+  echo Signing ARM binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\ARM' -outdir '%release_dir%\ARM\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) ARM binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+  echo Signing x86 binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\x86' -outdir '%release_dir%\x86\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) x86 binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+  echo Signing x64 binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\x64' -outdir '%release_dir%\x64\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) x64 binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+  goto end
+)
+
 if not defined node_dir (
   echo Error: set node_dir to the path of your Node.js Git clone.
   goto end
@@ -68,6 +108,13 @@ if defined copyrelease (
     echo D | xcopy /y /f "%uwpaddon_dir%\build\release\uwp.node" "%release_dir%\ARM"
   )
 )
+
+@rem sign the binaries
+if defined sign (
+  echo Signing ARM binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\ARM' -outdir '%release_dir%\ARM\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) ARM binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+)
+
 pushd %batch_dir%
 if not defined buildall goto end
 
@@ -91,6 +138,13 @@ if defined copyrelease (
     echo D | xcopy /y /f "%uwpaddon_dir%\build\release\uwp.node" "%release_dir%\x86"
   )
 )
+
+@rem sign the binaries
+if defined sign (
+  echo Signing x86 binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\x86' -outdir '%release_dir%\x86\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) x86 binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+)
+
 pushd %batch_dir%
 if not defined buildall goto end
 
@@ -114,6 +168,13 @@ if defined copyrelease (
     echo D | xcopy /y /f "%uwpaddon_dir%\build\release\uwp.node" "%release_dir%\x64"
   )
 )
+
+@rem sign the binaries
+if defined sign (
+  echo Signing x64 binaries...
+  powershell -command "& { . .\sign.ps1; begin_sign_files -files 'node.dll','nodeuwp.dll','uwp.node' -bindir '%release_dir%\x64' -outdir '%release_dir%\x64\Signed' -approvers 'jinglou','sitani' -projectName 'NTVS IoT' -projectUrl 'https://github.com/ms-iot/ntvsiot' -jobDescription 'Node.js (Chakra) x64 binaries for NTVS IoT' -jobKeywords 'NTVS', 'Node.js', 'IoT' -certificates 'authenticode'}"
+)
+
 pushd %batch_dir%
 
 :end
