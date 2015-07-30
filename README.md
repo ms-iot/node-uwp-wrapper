@@ -27,7 +27,7 @@ Prerequisites:
 Steps:
 
 * Open cmd window
-* Set node_dir to the path of your Node.js clone (a *-uwp branch needs to be checked out)
+* Set node_dir to the path of your Node.js clone (a *-uwp branch needs to be checked out). **Note:** If you are building in Visual Studio this environment variable needs to be set to build successfully.
 * Set release_dir if desired (optional if copyrelease is not used)
 * Run "build.bat [x86|x64|arm] [copyrelease] [builduwpaddon]"
   * If no platform is provided, all platforms (x86, x64, and ARM) will be built
