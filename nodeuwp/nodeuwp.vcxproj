@@ -41,6 +41,8 @@
     <PackageCertificateKeyFile>nodeuwp_TemporaryKey.pfx</PackageCertificateKeyFile>
     <ContainsStartupTask>true</ContainsStartupTask>
     <ProjectName>nodeuwp</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.10240.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
