@@ -9,7 +9,7 @@
 @rem To build successfully, clones of all the above projects are required.
 
 @rem Usage:
-@rem build.bat [x86 | ARM | x64] [builduwpaddon] [copyrelease] [sign] [onlysign]
+@rem build.bat [x86 | ARM | x64] [builduwpaddon] [copyrelease] [sign] [onlysign] [debug]
 
 @rem If processor architecture isn't specified all architectures will be built
 @rem To use the 'sign' option, builduwpaddon and copyrelease need to be included
