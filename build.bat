@@ -21,6 +21,11 @@
 @rem set release_dir=c:\release
 @rem build.bat ARM builduwpaddon copyrelease
 
+@rem Uncomment and set the lines below to setup your environment automatically.
+@rem set node_dir=
+@rem set uwpaddon_dir=
+@rem set release_dir=
+
 @rem The result of the command above will be:
 @rem c:\release\arm\node.dll
 @rem               \nodeuwp.dll
