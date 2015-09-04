@@ -1,11 +1,11 @@
 ##Node.js UWP Wrapper
 This project is a Universal Windows Platform (UWP) application that wraps Node.js and enables deployment to Windows IoT Core devices from Visual Studio.
-The application is packaged into the [NTVS IoT Extension (Beta)](https://github.com/ms-iot/ntvsiot) installer. The NTVS IoT Extension gives you the ability
-to create Node.js applications and easily deploy and debug them on Windows IoT Core devices. During deployment, the extension will create a UWP package that
-contains:
+The application is packaged into the [Node.js Tools for Windows IoT](https://github.com/ms-iot/ntvsiot/releases) installer. These tools provide the ability
+to create Node.js applications and easily deploy and debug them on Windows IoT Core devices. 
+During deployment, the NTVS IoT extension will create a UWP package that contains:
 
 * nodeuwp.dll: That's this UWP application.
-* node.dll (code [here](https://github.com/Microsoft/node) in *-uwp branches):  This is node.exe, renamed to node.dll, and with the following differences:
+* node.dll (code [here](https://github.com/Microsoft/node) in ch0.12-uwp branch):  This is node.exe, renamed to node.dll, and with the following differences:
   * It uses the Chakra JavaScript engine.
   * Code that not allowed in a UWP app container is disabled.
   * Code links to onecore.lib (instead of legacy DLL's like kernel32.dll, etc.) to enable it to run on Windows IoT Core.
@@ -18,10 +18,9 @@ To get started, take a look at the "Hello World" sample [here](http://ms-iot.git
 
 Prerequisites:
 
-    * Windows 10 (latest)
+    * Windows 10
+    * Visual Studio 2015
     * Python 2.6 or 2.7
-    * Visual Studio 2015 (RC or later)
-    * Windows 10 Tools (Bundled in Visual Studio 2015, or install separately)
 	* Clone Node.js from https://github.com/microsoft/node
 
 Steps:
@@ -38,7 +37,7 @@ Steps:
 Follow the steps below to run [tests](https://github.com/joyent/node/tree/master/test) included with Node.js.
 
 * Clone Node.js from [https://github.com/microsoft/node](https://github.com/microsoft/node)
-* Install the NTVS IoT Extension using the steps [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm) and create a new Node.js (Windows Universal) project
+* Install the Node.js Tools for Windows IoT using the steps [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm) and create a new Node.js (Windows Universal) project
 * Copy &lt;Node.js clone path&gt;\tests to &lt;Node.js UWP project path (location of .njsproj file)&gt;\tests
 * Right click on the test you want to run and select "Set as Node.js Startup File". The file text will be made bold (see test-assert.js example below)
 
@@ -56,7 +55,7 @@ Buffer | Yes
 Child Processes | **No**
 Cluster | **No**
 Console | Output can optionally be redirected to file
-Crypto | In testing
+Crypto | Yes
 Debugger | **No**
 DNS | Yes
 Domain | Yes
@@ -64,7 +63,7 @@ Events | Yes
 File System | In testing
 Globals | In testing
 HTTP | Yes
-HTTPS | In testing
+HTTPS | Yes
 Modules | Yes
 Net | Yes
 OS | In testing
@@ -78,7 +77,7 @@ Smalloc | Yes
 Stream | In testing
 String Decoder | In testing
 Timers | Yes
-TLS/SSL | In testing
+TLS/SSL | Yes
 TTY | **No**
 UDP/Datagram | Yes
 URL | Yes
@@ -88,6 +87,4 @@ ZLIB | Yes
 
 **Note:** 
 There may be some limitations in supported modules. For example, the [fs](https://nodejs.org/api/fs.html) module can only access files within its the UWP package or within paths declared in its [package capabilities](https://msdn.microsoft.com/en-us/library/windows/apps/hh464936.aspx).
-'In testing' in the Supported column means the API may work for the most part but some failures may be seen (see compatibility.xlsx below). 
-
-A detailed list with methods in the API and their pass/fail status can be seen [here](./compatibility.xlsx).
+'In testing' in the Supported column means the API may work for the most part but some failures may be seen.
