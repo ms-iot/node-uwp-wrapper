@@ -37,6 +37,8 @@ using namespace concurrency;
 using namespace Windows::UI::Core;
 using namespace Windows::Storage;
 using namespace Windows::Data::Xml::Dom;
+using namespace Windows::Foundation;
+using namespace Windows::Foundation::Collections;
 using namespace Platform::Collections;
 
 // startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
@@ -79,7 +81,64 @@ std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
 	return buffer;
 }
 
-void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes)
+void CopyFolder(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
+{
+	create_task(sourceFolder->GetItemsAsync()).then([=](IVectorView<IStorageItem^>^ items) {
+		for (auto it = items->First(); it->HasCurrent; it->MoveNext())
+		{
+			if (it->Current->IsOfType(StorageItemTypes::File))
+			{
+				StorageFile^ file = (StorageFile^)it->Current;
+				// Check if the destination file exists
+				create_task(destFolder->TryGetItemAsync(file->Name)).then([=](IStorageItem^ destItem) {
+					if (nullptr == destItem)
+					{
+						// Copy new file
+						create_task(file->CopyAsync(destFolder)).then([=](StorageFile^ file) {}).wait();
+					}
+					else
+					{
+						// If file already exists, only copy if it is newer than the destination file
+						DateTime sourceFileTime;
+						DateTime destFileTime;
+
+						create_task(file->GetBasicPropertiesAsync()).then([&sourceFileTime](FileProperties::BasicProperties^ sourceFileProps) {
+							sourceFileTime = sourceFileProps->DateModified;
+						}).wait();
+						create_task(file->GetBasicPropertiesAsync()).then([&destFileTime](FileProperties::BasicProperties^ destFileProps) {
+							destFileTime = destFileProps->DateModified;
+						}).wait();
+						//TODO: source and destination UT is always the same so always copy until that issue is resolved.
+						//if (sourceFileTime.UniversalTime > destFileTime.UniversalTime)
+						//{
+							create_task(file->CopyAndReplaceAsync((StorageFile^)destItem)).then([=](void) {}).wait();
+						//}
+					}
+				}).wait();
+			}
+			else
+			{
+				StorageFolder^ sourceSubFolder = (StorageFolder^)it->Current;
+				// Check if the destination folder exists
+				create_task(ApplicationData::Current->LocalFolder->TryGetItemAsync(sourceSubFolder->Name)).then([=](IStorageItem^ destSubFolder) {
+					if (nullptr == destSubFolder)
+					{
+						// Create a new destination folder if it does not exist
+						create_task(destFolder->CreateFolderAsync(sourceSubFolder->Name)).then([=](StorageFolder^ newfolder) {
+							CopyFolder(sourceSubFolder, newfolder);
+						}).wait();
+					}
+					else
+					{
+						CopyFolder(sourceSubFolder, (StorageFolder^)destSubFolder);
+					}		
+				}).wait();
+			}
+		}
+	}).wait();
+}
+
+void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript = false)
 {
 	if (argNodes != nullptr)
 	{
@@ -113,6 +172,14 @@ void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeLi
 			useLogger = true;
 			return;
 		}
+
+		if (isStartupScript)
+		{
+			std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
+			localFolder = localFolder.append(L"\\");
+			s = localFolder.append(s);
+		}
+
 		argChar = PlatformStringToChar(s.c_str(), s.size());
 		argVector.push_back(argChar);
 	}
@@ -120,6 +187,12 @@ void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeLi
 
 void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 {
+	StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
+	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
+	// Copy files to this applications local storage so that node can read/write  to files/=
+	// or folders relative to the location of the starup JavaScript file
+	CopyFolder(appFolder, localFolder);
+
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
 	auto installationLocation = Windows::ApplicationModel::Package::Current->InstalledLocation;
@@ -141,7 +214,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 			PopulateArgsVector(argumentVector, argumentNodes);
 
 			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/Script");
-			PopulateArgsVector(argumentVector, argumentNodes);
+			PopulateArgsVector(argumentVector, argumentNodes, true);
 
 			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/ScriptArgs");
 			PopulateArgsVector(argumentVector, argumentNodes);
