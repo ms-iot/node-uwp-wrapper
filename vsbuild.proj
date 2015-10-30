@@ -1,0 +1,12 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="BuildDeviceFiles">
+		<Copy SourceFiles="\\scratch2\scratch\IoTDevX\BuildHelpers\build_device_files.ps1" DestinationFolder="."/>  
+		<PropertyGroup>
+			<ScriptLocation>. .\build_device_files.ps1</ScriptLocation>
+		</PropertyGroup>
+		<Exec Command="PowerShell -command &quot;&amp; { $(ScriptLocation) } &quot;" />
+	</Target>
+	<PropertyGroup Condition="$(TeamBuildOutDir) != '' ">
+		<OutDir>.\bin</OutDir>
+	</PropertyGroup>
+</Project>
