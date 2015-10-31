@@ -81,9 +81,9 @@ std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
 	return buffer;
 }
 
-void CopyFolder(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
+task<void> CopyFolderAsync(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
 {
-	create_task(sourceFolder->GetItemsAsync()).then([=](IVectorView<IStorageItem^>^ items) {
+	return create_task(sourceFolder->GetItemsAsync()).then([=](IVectorView<IStorageItem^>^ items) {
 		for (auto it = items->First(); it->HasCurrent; it->MoveNext())
 		{
 			if (it->Current->IsOfType(StorageItemTypes::File))
@@ -94,7 +94,7 @@ void CopyFolder(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
 					if (nullptr == destItem)
 					{
 						// Copy new file
-						create_task(file->CopyAsync(destFolder)).then([=](StorageFile^ file) {}).wait();
+						create_task(file->CopyAsync(destFolder)).then([=](StorageFile^ file) {});
 					}
 					else
 					{
@@ -105,14 +105,15 @@ void CopyFolder(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
 						create_task(file->GetBasicPropertiesAsync()).then([&sourceFileTime](FileProperties::BasicProperties^ sourceFileProps) {
 							sourceFileTime = sourceFileProps->DateModified;
 						}).wait();
-						create_task(file->GetBasicPropertiesAsync()).then([&destFileTime](FileProperties::BasicProperties^ destFileProps) {
+
+						create_task(destItem->GetBasicPropertiesAsync()).then([&destFileTime](FileProperties::BasicProperties^ destFileProps) {
 							destFileTime = destFileProps->DateModified;
 						}).wait();
-						//TODO: source and destination UT is always the same so always copy until that issue is resolved.
-						//if (sourceFileTime.UniversalTime > destFileTime.UniversalTime)
-						//{
-							create_task(file->CopyAndReplaceAsync((StorageFile^)destItem)).then([=](void) {}).wait();
-						//}
+
+						if (sourceFileTime.UniversalTime > destFileTime.UniversalTime)
+						{
+							create_task(file->CopyAndReplaceAsync((StorageFile^)destItem));
+						}
 					}
 				}).wait();
 			}
@@ -120,22 +121,22 @@ void CopyFolder(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
 			{
 				StorageFolder^ sourceSubFolder = (StorageFolder^)it->Current;
 				// Check if the destination folder exists
-				create_task(ApplicationData::Current->LocalFolder->TryGetItemAsync(sourceSubFolder->Name)).then([=](IStorageItem^ destSubFolder) {
+				create_task(destFolder->TryGetItemAsync(sourceSubFolder->Name)).then([=](IStorageItem^ destSubFolder) {
 					if (nullptr == destSubFolder)
 					{
 						// Create a new destination folder if it does not exist
 						create_task(destFolder->CreateFolderAsync(sourceSubFolder->Name)).then([=](StorageFolder^ newfolder) {
-							CopyFolder(sourceSubFolder, newfolder);
+							create_task(CopyFolderAsync(sourceSubFolder, newfolder)).wait();
 						}).wait();
 					}
 					else
 					{
-						CopyFolder(sourceSubFolder, (StorageFolder^)destSubFolder);
-					}		
+						create_task(CopyFolderAsync(sourceSubFolder, (StorageFolder^)destSubFolder)).wait();
+					}
 				}).wait();
 			}
 		}
-	}).wait();
+	});
 }
 
 void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript = false)
@@ -191,7 +192,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
 	// Copy files to this applications local storage so that node can read/write  to files/=
 	// or folders relative to the location of the starup JavaScript file
-	CopyFolder(appFolder, localFolder);
+	create_task(CopyFolderAsync(appFolder, localFolder)).wait();
 
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
