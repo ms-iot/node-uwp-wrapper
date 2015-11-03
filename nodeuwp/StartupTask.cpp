@@ -40,6 +40,7 @@ using namespace Windows::Data::Xml::Dom;
 using namespace Windows::Foundation;
 using namespace Windows::Foundation::Collections;
 using namespace Platform::Collections;
+using namespace Windows::System;
 
 // startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
 // It's updated through Node.js UWP project properties and packaged in the project appx.
@@ -49,7 +50,7 @@ using namespace Platform::Collections;
 // output to a file (nodeuwp.log) in this applications local storage folder.
 bool useLogger = false;
 
-std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
+std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int strSize)
 {
 	// Calculate the needed buffer size
 	DWORD bufferSize = WideCharToMultiByte(CP_UTF8,
@@ -81,65 +82,18 @@ std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
 	return buffer;
 }
 
-task<void> CopyFolderAsync(StorageFolder^ sourceFolder, StorageFolder^ destFolder)
+void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destination)
 {
-	return create_task(sourceFolder->GetItemsAsync()).then([=](IVectorView<IStorageItem^>^ items) {
-		for (auto it = items->First(); it->HasCurrent; it->MoveNext())
-		{
-			if (it->Current->IsOfType(StorageItemTypes::File))
-			{
-				StorageFile^ file = (StorageFile^)it->Current;
-				// Check if the destination file exists
-				create_task(destFolder->TryGetItemAsync(file->Name)).then([=](IStorageItem^ destItem) {
-					if (nullptr == destItem)
-					{
-						// Copy new file
-						create_task(file->CopyAsync(destFolder)).then([=](StorageFile^ file) {});
-					}
-					else
-					{
-						// If file already exists, only copy if it is newer than the destination file
-						DateTime sourceFileTime;
-						DateTime destFileTime;
-
-						create_task(file->GetBasicPropertiesAsync()).then([&sourceFileTime](FileProperties::BasicProperties^ sourceFileProps) {
-							sourceFileTime = sourceFileProps->DateModified;
-						}).wait();
-
-						create_task(destItem->GetBasicPropertiesAsync()).then([&destFileTime](FileProperties::BasicProperties^ destFileProps) {
-							destFileTime = destFileProps->DateModified;
-						}).wait();
-
-						if (sourceFileTime.UniversalTime > destFileTime.UniversalTime)
-						{
-							create_task(file->CopyAndReplaceAsync((StorageFile^)destItem));
-						}
-					}
-				}).wait();
-			}
-			else
-			{
-				StorageFolder^ sourceSubFolder = (StorageFolder^)it->Current;
-				// Check if the destination folder exists
-				create_task(destFolder->TryGetItemAsync(sourceSubFolder->Name)).then([=](IStorageItem^ destSubFolder) {
-					if (nullptr == destSubFolder)
-					{
-						// Create a new destination folder if it does not exist
-						create_task(destFolder->CreateFolderAsync(sourceSubFolder->Name)).then([=](StorageFolder^ newfolder) {
-							create_task(CopyFolderAsync(sourceSubFolder, newfolder)).wait();
-						}).wait();
-					}
-					else
-					{
-						create_task(CopyFolderAsync(sourceSubFolder, (StorageFolder^)destSubFolder)).wait();
-					}
-				}).wait();
-			}
-		}
-	});
+	// Using xcopy for best performance
+	String^ args = source->Path + "\\*" + " " + destination->Path + " " + "/s /d /y";
+	ProcessLauncherResult^ result = create_task(ProcessLauncher::RunToCompletionAsync("c:\\windows\\system32\\xcopy.exe", args)).get();
+	if (nullptr != result && 0 != result->ExitCode)
+	{
+		throw ref new Exception(-1, "Nodeuwp CopyFolderSync error: " + result->ExitCode);
+	}
 }
 
-void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript = false)
+void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript)
 {
 	if (argNodes != nullptr)
 	{
@@ -190,9 +144,9 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 {
 	StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
-	// Copy files to this applications local storage so that node can read/write  to files/=
+	// Copy files to this applications local storage so that node can read/write to files
 	// or folders relative to the location of the starup JavaScript file
-	create_task(CopyFolderAsync(appFolder, localFolder)).wait();
+	CopyFolderSync(appFolder, localFolder);
 
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
