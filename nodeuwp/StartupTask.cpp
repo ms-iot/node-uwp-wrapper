@@ -28,8 +28,11 @@
 #include "v8.h"
 #include "node.h"
 #include "Logger.h"
+#include <filesystem>
 
 using namespace nodeuwp;
+using namespace std::tr2::sys;
+using namespace std;
 
 using namespace Platform;
 using namespace Windows::ApplicationModel::Background;
@@ -82,17 +85,6 @@ std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int 
 	return buffer;
 }
 
-void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destination)
-{
-	// Using xcopy for best performance
-	String^ args = source->Path + "\\*" + " " + destination->Path + " " + "/s /d /y";
-	ProcessLauncherResult^ result = create_task(ProcessLauncher::RunToCompletionAsync("c:\\windows\\system32\\xcopy.exe", args)).get();
-	if (nullptr != result && 0 != result->ExitCode)
-	{
-		throw ref new Exception(-1, "Nodeuwp CopyFolderSync error: " + result->ExitCode);
-	}
-}
-
 void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript)
 {
 	if (argNodes != nullptr)
@@ -139,6 +131,19 @@ void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVect
 		argVector.push_back(argChar);
 	}
 }
+
+void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destination)
+{
+	wstring from = source->Path->Data();
+	wstring to = destination->Path->Data();
+	copy_options opts = copy_options::recursive | copy_options::update_existing;
+
+	for (directory_iterator next(from), end; next != end; ++next)
+	{
+		copy(next->path(), to / next->path().filename(), opts);
+	}
+}
+
 
 void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 {
