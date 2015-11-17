@@ -134,14 +134,10 @@ void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVect
 
 void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destination)
 {
-	wstring from = source->Path->Data();
-	wstring to = destination->Path->Data();
+	path from(source->Path->Data());
+	path to(destination->Path->Data());
 	copy_options opts = copy_options::recursive | copy_options::update_existing;
-
-	for (directory_iterator next(from), end; next != end; ++next)
-	{
-		copy(next->path(), to / next->path().filename(), opts);
-	}
+	copy(from, to, opts);
 }
 
 
