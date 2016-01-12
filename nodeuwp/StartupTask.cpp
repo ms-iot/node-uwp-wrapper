@@ -28,8 +28,11 @@
 #include "v8.h"
 #include "node.h"
 #include "Logger.h"
+#include <filesystem>
 
 using namespace nodeuwp;
+using namespace std::tr2::sys;
+using namespace std;
 
 using namespace Platform;
 using namespace Windows::ApplicationModel::Background;
@@ -37,7 +40,10 @@ using namespace concurrency;
 using namespace Windows::UI::Core;
 using namespace Windows::Storage;
 using namespace Windows::Data::Xml::Dom;
+using namespace Windows::Foundation;
+using namespace Windows::Foundation::Collections;
 using namespace Platform::Collections;
+using namespace Windows::System;
 
 // startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
 // It's updated through Node.js UWP project properties and packaged in the project appx.
@@ -47,7 +53,7 @@ using namespace Platform::Collections;
 // output to a file (nodeuwp.log) in this applications local storage folder.
 bool useLogger = false;
 
-std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
+std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int strSize)
 {
 	// Calculate the needed buffer size
 	DWORD bufferSize = WideCharToMultiByte(CP_UTF8,
@@ -79,7 +85,7 @@ std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize)
 	return buffer;
 }
 
-void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes)
+void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript)
 {
 	if (argNodes != nullptr)
 	{
@@ -113,13 +119,36 @@ void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeLi
 			useLogger = true;
 			return;
 		}
+
+		if (isStartupScript)
+		{
+			std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
+			localFolder = localFolder.append(L"\\");
+			s = localFolder.append(s);
+		}
+
 		argChar = PlatformStringToChar(s.c_str(), s.size());
 		argVector.push_back(argChar);
 	}
 }
 
+void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destination)
+{
+	path from(source->Path->Data());
+	path to(destination->Path->Data());
+	copy_options opts = copy_options::recursive | copy_options::update_existing;
+	copy(from, to, opts);
+}
+
+
 void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 {
+	StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
+	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
+	// Copy files to this applications local storage so that node can read/write to files
+	// or folders relative to the location of the starup JavaScript file
+	CopyFolderSync(appFolder, localFolder);
+
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
 	auto installationLocation = Windows::ApplicationModel::Package::Current->InstalledLocation;
@@ -141,7 +170,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 			PopulateArgsVector(argumentVector, argumentNodes);
 
 			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/Script");
-			PopulateArgsVector(argumentVector, argumentNodes);
+			PopulateArgsVector(argumentVector, argumentNodes, true);
 
 			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/ScriptArgs");
 			PopulateArgsVector(argumentVector, argumentNodes);
