@@ -28,6 +28,7 @@
 #include "ILogger.h"
 #include <windows.storage.h>
 
+using namespace Platform;
 using namespace Windows::Storage;
 
 namespace nodeuwp 
@@ -36,12 +37,12 @@ namespace nodeuwp
 	class Logger : public node::logger::ILogger
 	{
 	public: 
-		static const Logger &GetInstance();
+		static const Logger &GetInstance(String^ logFileName);
 		~Logger() {}
 		virtual void Log(ILogger::LogLevel logLevel, const char* str) const override;
 
 	private:
-		Logger();
+		Logger(String^ logFileName);
 		StorageFile^ m_file;
 		static std::unique_ptr<Logger> s_pInstance;
 	};

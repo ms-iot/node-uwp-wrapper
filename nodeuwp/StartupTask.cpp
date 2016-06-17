@@ -53,7 +53,7 @@ using namespace Windows::System;
 // output to a file (nodeuwp.log) in this applications local storage folder.
 bool useLogger = false;
 
-std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int strSize)
+shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int strSize)
 {
 	// Calculate the needed buffer size
 	DWORD bufferSize = WideCharToMultiByte(CP_UTF8,
@@ -70,7 +70,7 @@ std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int 
 		throw ref new ::Platform::Exception(GetLastError(), L"Failed to convert Platform string to utf8 string");
 	}
 
-	std::shared_ptr<char> buffer(new char[bufferSize + 1], [](char* ptr) { delete[] ptr; });
+	shared_ptr<char> buffer(new char[bufferSize + 1], [](char* ptr) { delete[] ptr; });
 	buffer.get()[bufferSize] = '\0';
 	// Do the actual conversion
 	WideCharToMultiByte(CP_UTF8,
@@ -85,7 +85,8 @@ std::shared_ptr<char> StartupTask::PlatformStringToChar(const wchar_t* str, int 
 	return buffer;
 }
 
-void StartupTask::PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, XmlNodeList^ argNodes, bool isStartupScript)
+void StartupTask::PopulateArgsVector(vector<shared_ptr<char>> &argVector, 
+	XmlNodeList^ argNodes, bool isStartupScript)
 {
 	if (argNodes != nullptr)
 	{
@@ -140,7 +141,6 @@ void StartupTask::CopyFolderSync(StorageFolder^ source, StorageFolder^ destinati
 	copy(from, to, opts);
 }
 
-
 void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 {
 	StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
@@ -161,9 +161,9 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 
 		getStartupInfoXml.then([=](XmlDocument^ startupInfoXml)
 		{
-			std::vector<std::shared_ptr<char>> argumentVector;
+			vector<shared_ptr<char>> argumentVector;
 
-			std::shared_ptr<char> argChar = PlatformStringToChar(L" ", 1);
+			shared_ptr<char> argChar = PlatformStringToChar(L" ", 1);
 			argumentVector.push_back(argChar);
 
 			XmlNodeList^ argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/NodeOptions");
@@ -178,7 +178,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 
 			int argc = argumentVector.size();
 
-			std::shared_ptr<char*> argv;
+			shared_ptr<char*> argv;
 			argv.reset(new char*[argc], [](char** ptr) { delete[] ptr; });
 			for (unsigned int i = 0; i < argumentVector.size(); ++i)
 			{
@@ -191,8 +191,9 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 			}
 			else
 			{
-				node::Start(argc, argv.get(), &Logger::GetInstance());
+				node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
 			}
+
 			deferral->Complete();
 		});
 	});

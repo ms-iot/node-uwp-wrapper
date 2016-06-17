@@ -35,7 +35,8 @@ namespace nodeuwp
 		virtual void Run(Windows::ApplicationModel::Background::IBackgroundTaskInstance^ taskInstance);
 	private: 
 		void CopyFolderSync(Windows::Storage::StorageFolder^ source, Windows::Storage::StorageFolder^ destination);
-		void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, Windows::Data::Xml::Dom::XmlNodeList^ argNodes, bool isStartupScript = false);
+		void PopulateArgsVector(std::vector<std::shared_ptr<char>> &argVector, Windows::Data::Xml::Dom::XmlNodeList^ argNodes,
+			bool isStartupScript = false);
 		std::shared_ptr<char> PlatformStringToChar(const wchar_t* str, int strSize);
 	};
 }

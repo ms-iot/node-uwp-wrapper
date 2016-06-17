@@ -36,27 +36,26 @@ namespace nodeuwp
 {
 	std::unique_ptr<Logger> Logger::s_pInstance;
 
-	const Logger& Logger::GetInstance()
+	const Logger& Logger::GetInstance(String^ logFileName)
 	{
 		if (s_pInstance == nullptr)
 		{
 			if (s_pInstance == nullptr)
 			{
-				s_pInstance.reset(new (std::nothrow) Logger());
+				s_pInstance.reset(new (std::nothrow) Logger(logFileName));
 			}
 		}
 		return *s_pInstance.get();
 	}
 
-	Logger::Logger()
+	Logger::Logger(String^ logFileName)
 	{
 		// Create a new file in the local folder if it doesn't exist
 		StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;	
-		String^ logFile = "nodeuwp.log";
-		auto createFileTask = create_task(localFolder->CreateFileAsync(logFile, Windows::Storage::CreationCollisionOption::OpenIfExists));
+		auto createFileTask = create_task(localFolder->CreateFileAsync(logFileName, Windows::Storage::CreationCollisionOption::OpenIfExists));
 		createFileTask.then([this](StorageFile^ file) {
 			m_file = file;
-		});
+		}).wait(); // wait so if Log is called directly after it won't fail
 	}
 
 	void Logger::Log(ILogger::LogLevel logLevel, const char* str) const
