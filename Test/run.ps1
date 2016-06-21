@@ -1,4 +1,4 @@
-# Runs Node.js tests from UWP app
+# Test harness for running node.js tests in a Universal Windows Platform app.
 
 # PARAMETERS:
 
@@ -8,15 +8,25 @@
 #     to be installed. See -
 #     https://msdn.microsoft.com/en-us/library/windows/apps/bg126232.aspx
 #testSrcPath:
-#    'test' folder of a Node.js clone.
+#     Test folder of a Node.js clone.
 #appLauncherPath:
-#    Path to appx launcher
+#     Path to appx launcher
 
 
 # HOW IT WORKS:
 
-# This script uses the data in nodeuwp.testinfo that is expected to be in the
-# documents folder. The .testinfo file is an xml file with the following format:
+# 1. Install appx cert
+# 2. Install appx
+# 3. Copy tests to appx storage folder
+# 4. Reads .testinfo in documents folder to get list of tests to run
+# 5. For each test:
+#      a. Create startupinfo.xml file which contains arguments for node
+#      b. Run node
+# 6. Uninstall appx
+
+# This script uses the data in nodeuwp.testinfo (that is read from the
+# documents folder) to run Node.js tests. The .testinfo file is an xml
+# file with the following format:
 
 # <NodeTestInfo>
 #   <UseFolders></UseFolders>
@@ -27,36 +37,45 @@
 
 # UseFolders:
 #     Value can be 'true' or 'false' 
-#     If true, then the tests that will be run are the list of scripts in the
-#     <Files> element. Scripts should be delimited by a white-space character.
+#     If true, then the tests run will be the list of scripts in the
+#     <Files> element. Scripts should be separated by a white-space character.
 #     If false, then the tests in the folders specified in the <Folders>
-#     element. Folders should be delimited by a white-space character.
+#     element. Folders should be separated by a white-space character.
 # Files:
-#     list of files to run. The format should be 'test\<test sub folder>\<test script>'
+#     List of scripts to run. The format should be 'test\<test sub folder>\<script>'
 # Unsupported:
-#     list of strings used to check if a script is testing an unsupported feature.
+#     List of strings used to check if a script is should be skipped (i.e. testing
+#     an unsupported feature).
 
-# Example:
+# Example .testinfo file:
 # <NodeTestInfo>
 #   <UseFolders>false</UseFolders>
 #     <Files>
-# 	test\parallel\test-assert.js
-# 	test\parallel\test-buffer.js
-#	test\parallel\test-child-process-buffering.js
+#   test\parallel\test-assert.js
+#   test\parallel\test-buffer.js
+#   test\parallel\test-child-process-buffering.js
 #     </Files>
 #   <Folders>parallel sequential</Folders>
 #   <Unsupported>child-process cluster pipe stdin</Unsupported>
 # </NodeTestInfo>
 
-# In the example above, if UseFolders is false, then the test-assert and test-buffer will be run.
-# If UserFolders is true, then all tests in the 'test\parallel' folder will be run.
-# Any script that matches a string in the Unsupported element will be skipped.
+# In the example above, since UseFolders is false, the test-assert and test-buffer
+# will be run. If UserFolders is true, then all tests in the 'test\parallel' folder
+# will be run. Any script that matches a string in the Unsupported element will be 
+# skipped.
 
 
 # OUTPUT:
 
-# The format of the output is:
+# Output for the tests will be saved in the folder where this script is run from.
+# If <Files> element is used then the name of the log file is results.log.
+# If <Folders> element is used then the log file(s) naming convention is
+# results_<folder name>.log.
+# (Note: This PowerShell script as well as the node JavaScript tests will log to
+# the same file in the appx's local storage folder (nodeuwp.log). At the end
+# of the test run, the file is copied to the results*.log file)
 
+# The format of the output is:
 # <Timestamp> TestLog: Test count = [<Test count>]
 # <Timestamp> TestLog: <Test index>  - Start Test: <Script Name>
 # <Timestamp> TestLog: End Test
@@ -64,64 +83,83 @@
 # <Timestamp> TestLog: **TEST SUMMARY**
 # <Timestamp> TestLog: Tests run = [<Number of tests run>/<Test count>]. Tests passed = [<Number of pass tests>/<Number of tests run>]
 
-# Example:
-
+# Example output:
 # 2016-06-18 15:17:18Z TestLog: Test count = [3]
-# 
 # 2016-06-18 15:17:18Z TestLog: 1  - Start Test: test\parallel\test-assert.js
-# 
 # All OK
 # Exit Code: 0
 # 2016-06-18 15:17:21Z TestLog: End Test
-# 
 # 2016-06-18 15:17:22Z TestLog: 2  - Start Test: test\parallel\test-buffer.js
-# 
 # Error: Cannot find module 'C:\Users\munyirik\AppData\Local\Packages\nodeuwpui_gqmz2j608xdxe\LocalState\test\parallel\test-buffer.js'
 #    at Module._resolveFilename (module.js:341:5)
 #    at Module._load (module.js:290:3)
 #    at Module.runMain (module.js:453:3)
 #    at startup (node.js:148:11)
 #    at Anonymous function (node.js:519:3)
-# 
 # 2016-06-18 15:17:25Z TestLog: End Test
-# 
 # 2016-06-18 15:17:25Z TestLog: **TEST SUMMARY**
-# 
 # 2016-06-18 15:17:25Z TestLog: Tests run = [2/3]. Tests passed = [1/2]
 
+
+#Requires -RunAsAdministrator
+
 param (
-  [string]$appxFolderPath,
-  [string]$testSrcPath,
-  [string]$appLauncherPath
+  [string]$app,
+  [string]$test,
+  [string]$appl
 )
 
-$appxFolderPath = "F:\Repos\my_node-uwp-wrapper\Headed\AppPackages\nodeuwpui\nodeuwpui_1.0.0.0_Win32_Test\"
+function Print-Usage {
+  Write-Host "USAGE:"
+  Write-Host "run.ps1 -app <Appx path> -test <Test path> -appl <App launcher path>"
+}
 
-# Install appx certificate to trusted store
+if([string]::IsNullOrEmpty($app)) {
+  Write-Host "Error: Appx folder path required"
+  Print-Usage
+  Exit
+}
+
+if([string]::IsNullOrEmpty($test)) {
+  Write-Host "Error: Test path required"
+  Print-Usage
+  Exit
+}
+
+if([string]::IsNullOrEmpty($appl)) {
+  Write-Host "Error: App launcher path required"
+  Print-Usage
+  Exit
+}
+
+$appxFolderPath = $app
+$testSrcPath = $test
+$appLauncherPath = $appl
+
+# Install appx certificate to TrustedPeople
 $cerFileName = Get-Childitem -path $appxFolderPath -filter *.cer
 $certPath = $appxFolderPath + $cerFileName
 Import-Certificate -FilePath $certPath -CertStoreLocation cert:\LocalMachine\TrustedPeople
 
 
-# Install appx (remove if it exists already)
+# Install appx
 $packageName = Get-AppxPackage -Name nodeuwpui* | Select Name, PackageFullName
 If ([string]::IsNullOrWhitespace($packageName)) {
+  # Uninstall first if it's installed already
   $appxFileName = Get-Childitem -path $appxFolderPath -filter *.appx
   $appxPath = $appxFolderPath + $appxFileName
   Add-AppxPackage $appxPath
-} 
+}
 
-# Save the package name to use later
-$packageFullName = Get-AppxPackage -Name nodeuwpui* | Select Name, PackageFullName
-$packageFamilyName = Get-AppxPackage -Name nodeuwpui* | Select Name, PackageFamilyName
+$package = Get-AppxPackage -Name nodeuwpui*
 
 # Copy test files to app local storage
-$testSrcPath = "F:\Repos\my_node-msft\test"
-$appStoragePath = $env:LOCALAPPDATA + "\Packages\" + $packageFamilyName.PackageFamilyName + "\LocalState\"
+$appStoragePath = $env:LOCALAPPDATA + "\Packages\" + $package.PackageFamilyName + "\LocalState\"
 Copy-Item -Path $testSrcPath -Destination $appStoragePath -Recurse -Force
 
+
 $docsFolder = [environment]::getfolderpath("mydocuments")
-$startupinfoFileName = "startupinfo.xml"
+$startupinfoFileName = "\startupinfo.xml"
 
 $testInfoFileName = Get-Childitem -path $docsFolder -filter nodeuwp.testinfo
 $testInfoPath = $docsFolder + "\" + $testInfoFileName
@@ -130,8 +168,7 @@ $testInfoPath = $docsFolder + "\" + $testInfoFileName
 
 $useFolders = $TRUE
 
-$appLauncherPath = "F:\vhd\deployappx\TestAppLauncher.exe"
-
+# Name of log file needs to match log file name used by the app
 $resultsFile = $appStoragePath + "\nodeuwp.log"
 
 function Log-Message {
@@ -146,16 +183,16 @@ Param ($t, $f)
   $xmlDoc = New-Object System.Xml.XmlDocument
 
   $StartupInfo = $xmlDoc.CreateElement("StartupInfo")
-  $xmlDoc.appendChild($StartupInfo)
+  $xmlDoc.appendChild($StartupInfo) | out-null
   $Script = $xmlDoc.CreateElement("Script")
-  $Script.AppendChild($xmlDoc.CreateTextNode($t))
-  $StartupInfo.AppendChild($Script)
+  $Script.AppendChild($xmlDoc.CreateTextNode($t)) | out-null
+  $StartupInfo.AppendChild($Script) | out-null
   
   $NodeOptions = $xmlDoc.CreateElement("NodeOptions")
-  $StartupInfo.AppendChild($NodeOptions)
+  $StartupInfo.AppendChild($NodeOptions) | out-null
   $ScriptArgs = $xmlDoc.CreateElement("ScriptArgs")
-  $StartupInfo.AppendChild($ScriptArgs)
-  
+  $StartupInfo.AppendChild($ScriptArgs) | out-null
+
   $xmlDoc.Save($f)
 }
 
@@ -170,38 +207,38 @@ Param ($ta, $fol)
 
   Foreach($t in $ta) {
     # Check if test is supported
-	$next = $FALSE
-	Foreach($u in $unsupportedTests) {
+    $next = $FALSE
+    Foreach($u in $unsupportedTests) {
       If($t -match $u) {
-	    $next = $TRUE
-		break
-	  }
-	}
+        $next = $TRUE
+        break
+      }
+    }
 
-	if($next) {
-	  continue
-	}
-	
-	Log-Message -msg "$i  - Start Test: $t"
+    if($next) {
+      continue
+    }
+    
+    Log-Message -msg "$i  - Start Test: $t"
 
     $testPath = $docsFolder + $startupinfoFileName
-	
+    
     Save-StartupInfo -t $t -f $testPath
-	
-	$appName = ($packageFamilyName.PackageFamilyName + "!App")
-	
-	$args = "/appid", $appName
-	Start-Process -FilePath $appLauncherPath -ArgumentList $args -Wait
-	
-	# Wait for app to exit
-	$processName = "nodeuwpui"
-	$process = Get-Process $processName -ErrorAction SilentlyContinue
+    
+    $appName = ($package.PackageFamilyName + "!App")
+    
+    $args = "/appid", $appName
+    Start-Process -FilePath $appLauncherPath -ArgumentList $args -Wait
+    
+    # Wait for app to exit
+    $processName = "nodeuwpui"
+    $process = Get-Process $processName -ErrorAction SilentlyContinue
     if ($process) {
-	  Wait-Process -Name $processName -Timeout 60
-	}
-	
-	Log-Message -msg "End Test"
-	$i++
+      Wait-Process -Name $processName -Timeout 60
+    }
+    
+    Log-Message -msg "End Test"
+    $i++
   }
   
   $testsRun = $i - 1
@@ -243,21 +280,21 @@ if($useFolders) {
   Foreach($f in $folders) {
     Delete-Log
     $fullFolderPath = $appStoragePath + "test\" + $f;
-	$tests = Get-Childitem -path $fullfolderpath -filter *.js
-	
-	# Make test follow format "test\<test category>\<js file>"
-	for ($i=0; $i -lt $tests.Count; $i++) {
-	  $tests[$i] = "test\" + $f + "\" + $tests[$i]
-	}
+    $tests = Get-Childitem -path $fullfolderpath -filter *.js
+    
+    # Make test follow format "test\<test category>\<js file>"
+    for ($i=0; $i -lt $tests.Count; $i++) {
+      $tests[$i] = "test\" + $f + "\" + $tests[$i]
+    }
 
     Run-Tests -ta $tests -fol $f
-	
-	# Copy log file to script location
+    
+    # Copy log file to script location
     Copy-Item -Path $resultsFile -Destination ($PSScriptRoot + "\results_" + $f + ".log") -Force
   }
 }
 
 # Clean up
-Remove-AppxPackage $packageName.packageFullName
+Remove-AppxPackage $package.PackageFullName
 
 
