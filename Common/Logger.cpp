@@ -24,6 +24,7 @@
 
 #include "pch.h"
 #include "Logger.h"
+#include "Util.h"
 #include <windows.storage.h>
 #include <ppltasks.h>
 
@@ -31,44 +32,40 @@ using namespace Windows::Storage;
 using namespace Windows::Foundation;
 using namespace Platform;
 using namespace concurrency;
+using namespace std;
+using namespace nodeuwputil;
 
-namespace nodeuwpui 
-{
-	std::unique_ptr<Logger> Logger::s_pInstance;
+atomic<Logger*> Logger::m_instance;
+mutex Logger::m_mutex;
 
-	const Logger& Logger::GetInstance(String^ logFileName)
-	{
-		if (s_pInstance == nullptr)
-		{
-			if (s_pInstance == nullptr)
-			{
-				s_pInstance.reset(new (std::nothrow) Logger(logFileName));
-			}
+Logger* Logger::GetInstance(String^ logFileName) {
+	Logger* l = m_instance.load(memory_order_relaxed);
+	atomic_thread_fence(memory_order_acquire);
+	if (l == nullptr) {
+		lock_guard<mutex> lock(m_mutex);
+		l = m_instance.load(memory_order_relaxed);
+		if (l == nullptr) {
+			l = new Logger(logFileName);
+			atomic_thread_fence(memory_order_release);
+			m_instance.store(l, memory_order_relaxed);
 		}
-		return *s_pInstance.get();
 	}
+	return l;
+}
 
-	Logger::Logger(String^ logFileName)
-	{
-		// Create a new file in the local folder if it doesn't exist
-		StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;	
-		auto createFileTask = create_task(localFolder->CreateFileAsync(logFileName, Windows::Storage::CreationCollisionOption::OpenIfExists));
-		createFileTask.then([this](StorageFile^ file) {
-			m_file = file;
-		}).wait(); // wait so if Log is called directly after it won't fail
-	}
+Logger::Logger(String^ logFileName)
+{
+	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;	
+	m_file = create_task(localFolder->CreateFileAsync(logFileName, 
+		Windows::Storage::CreationCollisionOption::OpenIfExists)).get();
+}
 
-	void Logger::Log(ILogger::LogLevel logLevel, const char* str) const
-	{
-		// Convert char* to Platform::String
-		size_t newsize = strlen(str) + 1;
-		wchar_t * wcstring = new wchar_t[newsize];
-		size_t convertedChars = 0;
-		mbstowcs_s(&convertedChars, wcstring, newsize, str, _TRUNCATE);
-		String^ pstr = ref new String(wcstring);
+void Logger::Log(ILogger::LogLevel logLevel, const char* str) const
+{
+	lock_guard<mutex> lock(m_mutex);
+	shared_ptr<wchar_t> wc = CharToWChar(str, strlen(str) + 1);
+	String^ pstr = ref new String(wc.get());
 
-		// Append console logs to file
-		IAsyncAction^ Action = FileIO::AppendTextAsync(m_file, pstr + "\r\n");
-		create_task(Action).then([this](){}).wait(); // wait is required to log messages sequentially.
-	}
+	// Append console logs to file
+	create_task(FileIO::AppendTextAsync(m_file, pstr + "\r\n")).wait();
 }

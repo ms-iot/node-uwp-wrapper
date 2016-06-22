@@ -28,22 +28,22 @@
 #include "ILogger.h"
 #include <windows.storage.h>
 
+using namespace std;
 using namespace Platform;
 using namespace Windows::Storage;
 
-namespace nodeuwpui
-{
-	// Logger class routes log messages to file
-	class Logger : public node::logger::ILogger
-	{
-	public: 
-		static const Logger &GetInstance(String^ logFileName);
-		~Logger() {}
-		virtual void Log(ILogger::LogLevel logLevel, const char* str) const override;
 
-	private:
-		Logger(String^ logFileName);
-		StorageFile^ m_file;
-		static std::unique_ptr<Logger> s_pInstance;
-	};
-}
+// Logger class routes log messages to file
+class Logger : public node::logger::ILogger
+{
+public: 
+	static Logger* GetInstance(String^ logFileName);
+	~Logger() {}
+	void Log(ILogger::LogLevel logLevel, const char* str) const;
+
+private:
+	Logger(String^ logFileName);
+	StorageFile^ m_file;
+	static atomic<Logger*> m_instance;
+	static mutex m_mutex;
+};
