@@ -22,27 +22,44 @@
     THE SOFTWARE.
 */
 
-#pragma once
-
-#include <windows.h>
-#include "ILogger.h"
+#include "pch.h"
+#include "Logger.h"
+#include "Util.h"
 #include <windows.storage.h>
+#include <ppltasks.h>
 
 using namespace Windows::Storage;
+using namespace Windows::Foundation;
+using namespace Platform;
+using namespace concurrency;
+using namespace std;
+using namespace nodeuwputil;
 
-namespace nodeuwp 
+unique_ptr<Logger> Logger::m_instance;
+mutex Logger::m_mutex;
+once_flag Logger::m_onceflag;
+
+Logger& Logger::GetInstance(String^ logFileName)
 {
-	// Logger class routes log messages to file
-	class Logger : public node::logger::ILogger
-	{
-	public: 
-		static const Logger &GetInstance();
-		~Logger() {}
-		virtual void Log(ILogger::LogLevel logLevel, const char* str) const override;
+	call_once(m_onceflag, [=] {
+		m_instance.reset(new (nothrow) Logger(logFileName));
+	});
+	return *m_instance.get();
+}
 
-	private:
-		Logger();
-		StorageFile^ m_file;
-		static std::unique_ptr<Logger> s_pInstance;
-	};
+Logger::Logger(String^ logFileName)
+{
+	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;	
+	m_file = create_task(localFolder->CreateFileAsync(logFileName, 
+		Windows::Storage::CreationCollisionOption::OpenIfExists)).get();
+}
+
+void Logger::Log(ILogger::LogLevel logLevel, const char* str) const
+{
+	lock_guard<mutex> lock(m_mutex);
+	shared_ptr<wchar_t> wc = CharToWChar(str, strlen(str) + 1);
+	String^ pstr = ref new String(wc.get());
+
+	// Append console logs to file
+	create_task(FileIO::AppendTextAsync(m_file, pstr + "\r\n")).wait();
 }

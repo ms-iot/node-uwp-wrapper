@@ -1,0 +1,25 @@
+<!-- BVT -->
+<NodeTestInfo>
+  <UseFolders>false</UseFolders>
+    <Files>
+	test\parallel\test-c-ares.js
+	test\parallel\test-crypto.js
+	test\parallel\test-dns.js
+	test\parallel\test-domain.js
+	test\parallel\test-fs-read.js
+	test\parallel\test-fs-write.js
+	test\parallel\test-global.js
+	test\parallel\test-http.js
+	test\parallel\test-os.js
+	test\parallel\test-process-versions.js
+	test\parallel\test-punycode.js
+	test\parallel\test-querystring.js
+	test\parallel\test-timers.js
+	test\parallel\test-tls-connect.js
+	test\parallel\test-util.js
+	test\parallel\test-vm-basic.js
+	test\parallel\test-zlib.js
+    </Files>
+  <Folders>parallel sequential</Folders>
+  <Unsupported></Unsupported>
+</NodeTestInfo>
