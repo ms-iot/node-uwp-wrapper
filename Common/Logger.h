@@ -37,13 +37,14 @@ using namespace Windows::Storage;
 class Logger : public node::logger::ILogger
 {
 public: 
-	static Logger* GetInstance(String^ logFileName);
+	static Logger& GetInstance(String^ logFileName);
 	~Logger() {}
 	void Log(ILogger::LogLevel logLevel, const char* str) const;
 
 private:
 	Logger(String^ logFileName);
 	StorageFile^ m_file;
-	static atomic<Logger*> m_instance;
+	static unique_ptr<Logger> m_instance;
 	static mutex m_mutex;
+	static once_flag m_onceflag;
 };

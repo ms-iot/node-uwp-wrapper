@@ -296,5 +296,6 @@ if($useFolders) {
 
 # Clean up
 Remove-AppxPackage $package.PackageFullName
+#TODO: Uninstall cert as well
 
 

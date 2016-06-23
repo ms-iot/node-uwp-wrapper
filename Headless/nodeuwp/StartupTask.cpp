@@ -94,7 +94,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 			}
 			else
 			{
-				node::Start(argc, argv.get(), Logger::GetInstance("nodeuwp.log"));
+				node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
 			}
 
 			deferral->Complete();

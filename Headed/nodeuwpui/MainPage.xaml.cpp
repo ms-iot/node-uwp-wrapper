@@ -106,9 +106,9 @@ void MainPage::Run()
 			else
 			{	
 				String^ logFileName = "nodeuwp.log";
-				int ret = node::Start(argc, argv.get(), Logger::GetInstance(logFileName));
+				int ret = node::Start(argc, argv.get(), &Logger::GetInstance(logFileName));
 				string exitMsg = "Exit Code: " + std::to_string(ret);
-				Logger::GetInstance(logFileName)->Log(ILogger::LogLevel::Info, exitMsg.c_str());
+				Logger::GetInstance(logFileName).Log(ILogger::LogLevel::Info, exitMsg.c_str());
 			}
 			App::Current->Exit();
 		},task_continuation_context::use_arbitrary());

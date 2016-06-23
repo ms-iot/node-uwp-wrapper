@@ -35,22 +35,16 @@ using namespace concurrency;
 using namespace std;
 using namespace nodeuwputil;
 
-atomic<Logger*> Logger::m_instance;
+unique_ptr<Logger> Logger::m_instance;
 mutex Logger::m_mutex;
+once_flag Logger::m_onceflag;
 
-Logger* Logger::GetInstance(String^ logFileName) {
-	Logger* l = m_instance.load(memory_order_relaxed);
-	atomic_thread_fence(memory_order_acquire);
-	if (l == nullptr) {
-		lock_guard<mutex> lock(m_mutex);
-		l = m_instance.load(memory_order_relaxed);
-		if (l == nullptr) {
-			l = new Logger(logFileName);
-			atomic_thread_fence(memory_order_release);
-			m_instance.store(l, memory_order_relaxed);
-		}
-	}
-	return l;
+Logger& Logger::GetInstance(String^ logFileName)
+{
+	call_once(m_onceflag, [=] {
+		m_instance.reset(new (nothrow) Logger(logFileName));
+	});
+	return *m_instance.get();
 }
 
 Logger::Logger(String^ logFileName)
