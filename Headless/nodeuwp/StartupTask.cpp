@@ -88,16 +88,18 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 				argv.get()[i] = (argumentVector[i]).get();
 			}
 
+			int exitCode = 0;
 			if (!useLogger)
 			{
-				node::Start(argc, argv.get());
+				exitCode = node::Start(argc, argv.get());
 			}
 			else
 			{
-				node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
+				exitCode = node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
 			}
 
 			deferral->Complete();
+			std::exit(exitCode);
 		});
 	});
 }
