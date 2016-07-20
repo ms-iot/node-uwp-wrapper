@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <filesystem>
 #include <sstream>
 
+using namespace Platform;
 using namespace std::tr2::sys;
 
 namespace nodeuwputil
@@ -143,6 +144,74 @@ namespace nodeuwputil
 
 			argChar = WCharToChar(s.c_str(), s.size());
 			argVector.push_back(argChar);
+		}
+	}
+
+	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
+		String^ startStr, bool* const &useLogger)
+	{
+		if (startStr != nullptr)
+		{
+			std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
+			localFolder = localFolder.append(L"\\");
+
+			std::wstring s(startStr->Data());
+			std::wstring delimiter = L" ";
+
+			std::wstring token;
+			std::shared_ptr<char> argChar;
+
+			size_t offset = 0;
+			size_t pos = s.find(delimiter);
+
+			// If there are no spaces then we expect only the script name
+			if (pos == string::npos)
+			{
+				if (s.find(L".js") != string::npos)
+				{
+					s = localFolder.append(s);
+					argChar = WCharToChar(s.c_str(), s.size());
+					argVector.push_back(argChar);
+					return;
+				}
+			}
+
+			// If there are spaces then we expect a normal node command line.
+			while (pos != string::npos)
+			{
+				token = s.substr(offset, pos - offset);
+				// Ignore 'node' since it only works for console app
+				if (!(0 == token.compare(L"node") && 1 == argVector.size()))
+				{
+					if (0 == token.compare(L"--use-logger"))
+					{
+						*useLogger = true;
+					}
+					else
+					{
+						if (token.find(L".js") != string::npos)
+						{
+							token = localFolder.append(token);
+						}
+						argChar = WCharToChar(token.c_str(), token.size());
+						argVector.push_back(argChar);
+					}
+				}
+
+				offset = ++pos;
+				pos = s.find(delimiter, pos);
+				if (pos == string::npos)
+				{
+					token = s.substr(offset, pos - offset);
+					if (token.find(L".js") != string::npos)
+					{
+						token = localFolder.append(token);
+					}
+					argChar = WCharToChar(token.c_str(), token.size());
+					argVector.push_back(argChar);
+					break;
+				}
+			}
 		}
 	}
 
