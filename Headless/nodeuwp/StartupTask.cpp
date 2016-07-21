@@ -63,11 +63,12 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 
 			JsonObject^ jsonObj = JsonObject::Parse(jsonStr);
 
-			// First check 'main' for the script to start
+			// First check 'scripts' for the script to start
 			String^ startStr;
 			try
 			{
-				startStr = jsonObj->GetNamedString("main");
+				JsonObject^ scriptsObj = jsonObj->GetNamedObject("scripts");
+				startStr = scriptsObj->GetNamedString("start");
 			}
 			catch (Exception^ e) {
 				if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
@@ -75,18 +76,16 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 					throw;
 				}
 			}
-
 			if (nullptr != startStr)
 			{
 				PopulateArgsVector(argumentVector, startStr, &useLogger);
 			}
-			// If there was no 'main' check for a 'scripts' object
+			// If 'scripts' isn't found check for 'main'
 			else
 			{
 				try
 				{
-					jsonObj = jsonObj->GetNamedObject("scripts");
-					startStr = jsonObj->GetNamedString("start");
+					startStr = jsonObj->GetNamedString("main");
 				}
 				catch (Exception^ e) {
 					if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
