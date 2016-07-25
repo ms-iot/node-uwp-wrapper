@@ -22,7 +22,7 @@ To get started, take a look at the "Hello World" sample [here](http://ms-iot.git
 * [Python 2.6 or 2.7](https://www.python.org)
 * [Visual Studio 2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx)
 
-
+####Steps:
 * Clone the Node.js (Chakra) branch [here](https://aka.ms/node-uwp). 
 * Set an environment variable on your PC called NODE_DIR with the path of the clone (don't include trailing slash).
 * Checkout the 'chakra-uwp' branch and build with:
