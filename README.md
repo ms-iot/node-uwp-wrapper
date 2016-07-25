@@ -32,6 +32,11 @@ vcbuild chakra uwp-dll nosign [x86|x64|arm]
 ```
 * In Visual Studio, open the solution (nodeuwp.sln) for the app in the [Headless](./Headless) folder.
 * Select your configuration and platform then build.
+* You may also build the solution in the Developer Command Prompt for VS2015 (i.e. with msbuild):
+
+```batch
+msbuild Headless\nodeuwp.sln /p:configuration=[release|debug] /p:platform=[x86|x64|arm]
+```
 
   
 ##Testing
