@@ -26,9 +26,10 @@ To get started, take a look at the "Hello World" sample [here](http://ms-iot.git
 * Clone the Node.js (Chakra) branch [here](https://aka.ms/node-uwp). 
 * Set an environment variable on your PC called NODE_DIR with the path of the clone (don't include trailing slash).
 * Checkout the 'chakra-uwp' branch and build with:
-  ```batch
-  vcbuild chakra uwp-dll nosign [x86|x64|arm]
-  ```
+
+```batch
+vcbuild chakra uwp-dll nosign [x86|x64|arm]
+```
 * In Visual Studio, open the solution (nodeuwp.sln) for the app in the [Headless](./Headless) folder.
 * Select your configuration and platform then build.
 
