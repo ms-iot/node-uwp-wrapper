@@ -69,7 +69,6 @@ msbuild Headed\nodeuwpui.sln /p:configuration=[release|debug] /p:platform=[x86|x
 * Results will be saved to Test\results.log. Below shows an example of what the output looks like:
 
 ```batch
-Example output:
 2016-06-18 15:17:18Z TestLog: Test count = [3]
 2016-06-18 15:17:18Z TestLog: 1  - Start Test: test\parallel\test-assert.js
 All OK
