@@ -94,122 +94,71 @@ namespace nodeuwputil
 	}
 
 	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		XmlNodeList^ argNodes, bool isStartupScript, bool* const &useLogger)
-	{
-		if (argNodes != nullptr)
-		{
-			IXmlNode^ textNode = argNodes->GetAt(0)->FirstChild;
-
-			if (nullptr == textNode)
-				return;
-
-			std::wstring s(((Platform::String^)textNode->NodeValue)->Data());
-			std::wstring delimiter = L" ";
-
-			std::wstring token;
-			std::shared_ptr<char> argChar;
-
-			size_t offset = 0;
-			size_t pos = s.find(delimiter);
-			while (pos != string::npos)
-			{
-				token = s.substr(offset, pos - offset);
-
-				argChar = WCharToChar(token.c_str(), token.size());
-				if (0 == token.compare(L"--use-logger"))
-				{
-					*useLogger = true;
-				}
-				else
-				{
-					argVector.push_back(argChar);
-				}
-
-				offset = ++pos;
-				pos = s.find(delimiter, pos);
-				if (pos == string::npos)
-				{
-					token = s.substr(offset, pos - offset);
-					argVector.push_back(argChar);
-					break;
-				}
-			}
-
-			if (isStartupScript)
-			{
-				std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
-				localFolder = localFolder.append(L"\\");
-				s = localFolder.append(s);
-			}
-
-			argChar = WCharToChar(s.c_str(), s.size());
-			argVector.push_back(argChar);
-		}
-	}
-
-	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		String^ startStr, bool* const &useLogger)
+		String^ startStr, bool &useLogger)
 	{
 		if (startStr != nullptr)
 		{
-			std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
-			localFolder = localFolder.append(L"\\");
+			wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
+			localFolder.append(L"\\");
+			wstring args(startStr->Data());
+			args.erase(0, args.find_first_not_of(L" \n\r\t")); // Trim leading whitespace
+			wstring arg;
+			shared_ptr<char> in;
+			bool insert = false;
+			bool scriptFound = false;		
 
-			std::wstring s(startStr->Data());
-			std::wstring delimiter = L" ";
+			for (size_t i = 0; i < args.length(); i++) {
 
-			std::wstring token;
-			std::shared_ptr<char> argChar;
-
-			size_t offset = 0;
-			size_t pos = s.find(delimiter);
-
-			// If there are no spaces then we expect only the script name
-			if (pos == string::npos)
-			{
-				if (s.find(L".js") != string::npos)
-				{
-					s = localFolder.append(s);
-					argChar = WCharToChar(s.c_str(), s.size());
-					argVector.push_back(argChar);
-					return;
+				wchar_t c = args[i];
+				if (c == ' ') {
+					insert = true;
 				}
-			}
-
-			// If there are spaces then we expect a normal node command line.
-			while (pos != string::npos)
-			{
-				token = s.substr(offset, pos - offset);
-				// Ignore 'node' since it only works for console app
-				if (!(0 == token.compare(L"node") && 1 == argVector.size()))
+				else if (c == '\"') 
 				{
-					if (0 == token.compare(L"--use-logger"))
-					{
-						*useLogger = true;
+					i++;
+					while (args[i] != '\"')
+					{ 
+						arg += args[i];
+						i++; 
 					}
-					else
-					{
-						if (token.find(L".js") != string::npos)
-						{
-							token = localFolder.append(token);
-						}
-						argChar = WCharToChar(token.c_str(), token.size());
-						argVector.push_back(argChar);
-					}
+					i++;
+					insert = true;
+				}
+				else {
+					arg += args[i];
 				}
 
-				offset = ++pos;
-				pos = s.find(delimiter, pos);
-				if (pos == string::npos)
+				// We insert an argument into the vector if we see a space or we've reached the 
+				// end of the string.
+				if ((insert == true || args.size() - 1 == i) && arg.size() != 0)
 				{
-					token = s.substr(offset, pos - offset);
-					if (token.find(L".js") != string::npos)
+					insert = false;
+
+					// 'node' will usually be the first argument if the package.json file is also
+					// used with the console version of node. We'll ignore it if it exists.
+					if (_wcsicmp(arg.c_str(), L"node") == 0 && argVector.size() == 1)
 					{
-						token = localFolder.append(token);
+						arg.clear();
+						continue;
 					}
-					argChar = WCharToChar(token.c_str(), token.size());
-					argVector.push_back(argChar);
-					break;
+
+					if (arg.compare(L"--use-logger") == 0)
+					{
+						useLogger = true;
+						arg.clear();
+						continue;
+					}
+
+					// The first '*.js' argument will be considered as the script to start
+					if (arg.find(L".js") != string::npos && scriptFound == false)
+					{
+						scriptFound = true;
+						arg = localFolder + arg;
+					}
+
+					in = WCharToChar(arg.c_str(), arg.size());
+					argVector.push_back(in);
+					arg.clear();
 				}
 			}
 		}

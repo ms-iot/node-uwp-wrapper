@@ -78,7 +78,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 			}
 			if (nullptr != startStr)
 			{
-				PopulateArgsVector(argumentVector, startStr, &useLogger);
+				PopulateArgsVector(argumentVector, startStr, useLogger);
 			}
 			// If 'scripts' isn't found check for 'main'
 			else
@@ -96,7 +96,7 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 
 				if (nullptr != startStr)
 				{
-					PopulateArgsVector(argumentVector, startStr, &useLogger);
+					PopulateArgsVector(argumentVector, startStr, useLogger);
 				}
 				else
 				{

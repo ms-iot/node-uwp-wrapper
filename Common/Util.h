@@ -39,10 +39,7 @@ namespace nodeuwputil
 	shared_ptr<wchar_t> CharToWChar(const char* str, int strSize);
 
 	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		XmlNodeList^ argNodes, bool isStartupScript, bool* const &useLogger);
-
-	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		String^ startStr, bool* const &useLogger);
+		String^ startStr, bool &useLogger);
 
 	void CopyFolderSync(StorageFolder^ source, StorageFolder^ destination);
 }

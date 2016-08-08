@@ -41,8 +41,8 @@
     <PackageCertificateKeyFile>nodeuwp_TemporaryKey.pfx</PackageCertificateKeyFile>
     <ContainsStartupTask>true</ContainsStartupTask>
     <ProjectName>nodeuwp</ProjectName>
-    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformMinVersion>10.0.10240.0</WindowsTargetPlatformMinVersion>
+    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.10586.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -266,7 +266,13 @@
     <ClCompile Include="StartupTask.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\my_node\Debug\node.dll">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="nodeuwp_TemporaryKey.pfx" />
+    <None Include="package.json">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <SDKReference Include="WindowsIoT, Version=10.0.10586.0" />
