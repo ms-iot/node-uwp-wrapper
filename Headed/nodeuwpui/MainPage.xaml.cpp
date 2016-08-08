@@ -27,16 +27,13 @@ using namespace Windows::UI::Xaml::Data;
 using namespace Windows::UI::Xaml::Input;
 using namespace Windows::UI::Xaml::Media;
 using namespace Windows::UI::Xaml::Navigation;
+using namespace Windows::Data::Json;
 using namespace std;
 using namespace std::tr2::sys;
 using namespace Windows::Data::Xml::Dom;
 using namespace concurrency;
 using namespace node::logger;
 using namespace nodeuwputil;
-
-// startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
-// It's updated through Node.js UWP project properties and packaged in the project appx.
-#define STARTUP_FILE L"startupinfo.xml"
 
 // If --use-logger argument is passed to to Node, console.* methods will redirect
 // output to a file (nodeuwp.log) in this applications local storage folder.
@@ -59,59 +56,88 @@ void MainPage::Run()
 	task<StorageFile^> getStartupInfo;
 	if (testMode)
 	{
-		getStartupInfo = create_task(docsLibrary->GetFileAsync(STARTUP_FILE));
+		getStartupInfo = create_task(docsLibrary->GetFileAsync(L"package.json"));
 	}
 	else
 	{
-		getStartupInfo = create_task(appFolder->GetFileAsync(STARTUP_FILE));
+		getStartupInfo = create_task(appFolder->GetFileAsync(L"package.json"));
 	}
 
 	getStartupInfo.then([=](StorageFile^ storageFile)
 	{
-		task<XmlDocument^> getStartupInfoXml(XmlDocument::LoadFromFileAsync(storageFile));
-
-		getStartupInfoXml.then([=](XmlDocument^ startupInfoXml)
+		create_task(FileIO::ReadTextAsync(storageFile)).then([=](String^ jsonStr)
 		{
 			vector<shared_ptr<char>> argumentVector;
 
 			shared_ptr<char> argChar = WCharToChar(L" ", 1);
 			argumentVector.push_back(argChar);
 
-			XmlNodeList^ argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/NodeOptions");
-			PopulateArgsVector(argumentVector, argumentNodes, false, &useLogger);
+			JsonObject^ jsonObj = JsonObject::Parse(jsonStr);
 
-			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/Script");
-			PopulateArgsVector(argumentVector, argumentNodes, true, &useLogger);
+			// First check 'scripts' for the script to start
+			String^ startStr;
+			try
+			{
+				JsonObject^ scriptsObj = jsonObj->GetNamedObject("scripts");
+				startStr = scriptsObj->GetNamedString("start");
+			}
+			catch (Exception^ e) {
+				if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
+				{
+					throw;
+				}
+			}
+			if (nullptr != startStr)
+			{
+				PopulateArgsVector(argumentVector, startStr, useLogger);
+			}
+			// If 'scripts' isn't found check for 'main'
+			else
+			{
+				try
+				{
+					startStr = jsonObj->GetNamedString("main");
+				}
+				catch (Exception^ e) {
+					if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
+					{
+						throw;
+					}
+				}
 
-			string scriptName(argumentVector.at(argumentVector.size() - 1).get());
-
-			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/ScriptArgs");
-			PopulateArgsVector(argumentVector, argumentNodes, false, &useLogger);
-
+				if (nullptr != startStr)
+				{
+					PopulateArgsVector(argumentVector, startStr, useLogger);
+				}
+				else
+				{
+					App::Current->Exit();
+				}
+			}
 
 			int argc = argumentVector.size();
 
 			shared_ptr<char*> argv;
 			argv.reset(new char*[argc], [](char** ptr) { delete[] ptr; });
-
-			for (int i = 0; i < argumentVector.size(); ++i)
+			for (unsigned int i = 0; i < argumentVector.size(); ++i)
 			{
 				argv.get()[i] = (argumentVector[i]).get();
 			}
 
+			int exitCode = 0;
 			if (!useLogger)
 			{
-				node::Start(argc, argv.get());
+				exitCode = node::Start(argc, argv.get());
 			}
 			else
-			{	
+			{
 				String^ logFileName = "nodeuwp.log";
-				int ret = node::Start(argc, argv.get(), &Logger::GetInstance(logFileName));
-				string exitMsg = "Exit Code: " + std::to_string(ret);
+				exitCode = node::Start(argc, argv.get(), &Logger::GetInstance(logFileName));
+				string exitMsg = "Exit Code: " + std::to_string(exitCode);
 				Logger::GetInstance(logFileName).Log(ILogger::LogLevel::Info, exitMsg.c_str());
 			}
 			App::Current->Exit();
-		},task_continuation_context::use_arbitrary());
+		}, task_continuation_context::use_arbitrary());
 	});
 }
 
