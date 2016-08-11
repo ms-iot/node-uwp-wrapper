@@ -110,13 +110,14 @@ namespace nodeuwputil
 			for (size_t i = 0; i < args.length(); i++) {
 
 				wchar_t c = args[i];
-				if (c == ' ') {
+				if (c == ' ') 
+				{
 					insert = true;
 				}
 				else if (c == '\"') 
 				{
 					i++;
-					while (args[i] != '\"')
+					while (args[i] != '\"' && i < args.size())
 					{ 
 						arg += args[i];
 						i++; 
@@ -124,7 +125,8 @@ namespace nodeuwputil
 					i++;
 					insert = true;
 				}
-				else {
+				else 
+				{
 					arg += args[i];
 				}
 
