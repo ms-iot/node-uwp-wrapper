@@ -20,7 +20,7 @@
 # 3. Copy tests to appx storage folder
 # 4. Reads .testinfo in documents folder to get list of tests to run
 # 5. For each test:
-#      a. Create startupinfo.xml file which contains arguments for node
+#      a. Create package.json file which contains arguments for node
 #      b. Run node
 # 6. Uninstall appx
 
@@ -132,13 +132,13 @@ if([string]::IsNullOrEmpty($appl)) {
   Exit
 }
 
-$appxFolderPath = $app
+$appxFolderPath = $app.TrimEnd('\')
 $testSrcPath = $test
 $appLauncherPath = $appl
 
 # Install appx certificate to TrustedPeople
 $cerFileName = Get-Childitem -path $appxFolderPath -filter *.cer
-$certPath = $appxFolderPath + $cerFileName
+$certPath = $appxFolderPath + '\' + $cerFileName
 Import-Certificate -FilePath $certPath -CertStoreLocation cert:\LocalMachine\TrustedPeople
 
 
@@ -159,7 +159,7 @@ Copy-Item -Path $testSrcPath -Destination $appStoragePath -Recurse -Force
 
 
 $docsFolder = [environment]::getfolderpath("mydocuments")
-$startupinfoFileName = "\startupinfo.xml"
+$startupinfoFileName = "\package.json"
 
 $testInfoFileName = Get-Childitem -path $docsFolder -filter nodeuwp.testinfo
 $testInfoPath = $docsFolder + "\" + $testInfoFileName
@@ -180,20 +180,7 @@ Param ($msg)
 
 function Save-StartupInfo {
 Param ($t, $f)
-  $xmlDoc = New-Object System.Xml.XmlDocument
-
-  $StartupInfo = $xmlDoc.CreateElement("StartupInfo")
-  $xmlDoc.appendChild($StartupInfo) | out-null
-  $Script = $xmlDoc.CreateElement("Script")
-  $Script.AppendChild($xmlDoc.CreateTextNode($t)) | out-null
-  $StartupInfo.AppendChild($Script) | out-null
-  
-  $NodeOptions = $xmlDoc.CreateElement("NodeOptions")
-  $StartupInfo.AppendChild($NodeOptions) | out-null
-  $ScriptArgs = $xmlDoc.CreateElement("ScriptArgs")
-  $StartupInfo.AppendChild($ScriptArgs) | out-null
-
-  $xmlDoc.Save($f)
+  @{name="node-uwp-test";version="0.0.0";main=$t} | ConvertTo-Json -Compress | Out-File $f
 }
 
 function Run-Tests {

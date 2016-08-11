@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <vector>
 
 using namespace std;
+using namespace Platform;
 using namespace Windows::Storage;
 using namespace Windows::Data::Xml::Dom;
 
@@ -38,7 +39,7 @@ namespace nodeuwputil
 	shared_ptr<wchar_t> CharToWChar(const char* str, int strSize);
 
 	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		XmlNodeList^ argNodes, bool isStartupScript, bool* const &useLogger);
+		String^ startStr, bool &useLogger);
 
 	void CopyFolderSync(StorageFolder^ source, StorageFolder^ destination);
 }

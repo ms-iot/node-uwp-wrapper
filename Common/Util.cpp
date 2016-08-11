@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <filesystem>
 #include <sstream>
 
+using namespace Platform;
 using namespace std::tr2::sys;
 
 namespace nodeuwputil
@@ -93,56 +94,75 @@ namespace nodeuwputil
 	}
 
 	void PopulateArgsVector(vector<shared_ptr<char>> &argVector,
-		XmlNodeList^ argNodes, bool isStartupScript, bool* const &useLogger)
+		String^ startStr, bool &useLogger)
 	{
-		if (argNodes != nullptr)
+		if (startStr != nullptr)
 		{
-			IXmlNode^ textNode = argNodes->GetAt(0)->FirstChild;
+			wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
+			localFolder.append(L"\\");
+			wstring args(startStr->Data());
+			args.erase(0, args.find_first_not_of(L" \n\r\t")); // Trim leading whitespace
+			wstring arg;
+			shared_ptr<char> in;
+			bool insert = false;
+			bool scriptFound = false;		
 
-			if (nullptr == textNode)
-				return;
+			for (size_t i = 0; i < args.length(); i++) {
 
-			std::wstring s(((Platform::String^)textNode->NodeValue)->Data());
-			std::wstring delimiter = L" ";
-
-			std::wstring token;
-			std::shared_ptr<char> argChar;
-
-			size_t offset = 0;
-			size_t pos = s.find(delimiter);
-			while (pos != string::npos)
-			{
-				token = s.substr(offset, pos - offset);
-
-				argChar = WCharToChar(token.c_str(), token.size());
-				if (0 == token.compare(L"--use-logger"))
+				wchar_t c = args[i];
+				if (c == ' ') 
 				{
-					*useLogger = true;
+					insert = true;
 				}
-				else
+				else if (c == '\"') 
 				{
-					argVector.push_back(argChar);
+					i++;
+					while (args[i] != '\"' && i < args.size())
+					{ 
+						arg += args[i];
+						i++; 
+					}
+					i++;
+					insert = true;
+				}
+				else 
+				{
+					arg += args[i];
 				}
 
-				offset = ++pos;
-				pos = s.find(delimiter, pos);
-				if (pos == string::npos)
+				// We insert an argument into the vector if we see a space or we've reached the 
+				// end of the string.
+				if ((insert == true || args.size() - 1 == i) && arg.size() != 0)
 				{
-					token = s.substr(offset, pos - offset);
-					argVector.push_back(argChar);
-					break;
+					insert = false;
+
+					// 'node' will usually be the first argument if the package.json file is also
+					// used with the console version of node. We'll ignore it if it exists.
+					if (_wcsicmp(arg.c_str(), L"node") == 0 && argVector.size() == 1)
+					{
+						arg.clear();
+						continue;
+					}
+
+					if (arg.compare(L"--use-logger") == 0)
+					{
+						useLogger = true;
+						arg.clear();
+						continue;
+					}
+
+					// The first '*.js' argument will be considered as the script to start
+					if (arg.find(L".js") != string::npos && scriptFound == false)
+					{
+						scriptFound = true;
+						arg = localFolder + arg;
+					}
+
+					in = WCharToChar(arg.c_str(), arg.size());
+					argVector.push_back(in);
+					arg.clear();
 				}
 			}
-
-			if (isStartupScript)
-			{
-				std::wstring localFolder(ApplicationData::Current->LocalFolder->Path->Data());
-				localFolder = localFolder.append(L"\\");
-				s = localFolder.append(s);
-			}
-
-			argChar = WCharToChar(s.c_str(), s.size());
-			argVector.push_back(argChar);
 		}
 	}
 

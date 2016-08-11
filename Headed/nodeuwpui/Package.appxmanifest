@@ -27,6 +27,7 @@
               <uap:FileType>.testinfo</uap:FileType>
               <uap:FileType>.xml</uap:FileType>
               <uap:FileType>.js</uap:FileType>
+              <uap:FileType>.json</uap:FileType>
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>

@@ -35,10 +35,7 @@ using namespace std;
 using namespace Windows::ApplicationModel::Background;
 using namespace concurrency;
 using namespace nodeuwputil;
-
-// startupinfo.xml is used by Visual Studio to pass arguments to Node (see StartNode method).
-// It's updated through Node.js UWP project properties and packaged in the project appx.
-#define STARTUP_FILE L"startupinfo.xml"
+using namespace Windows::Data::Json;
 
 // If --use-logger argument is passed to to Node, console.* methods will redirect
 // output to a file (nodeuwp.log) in this applications local storage folder.
@@ -55,29 +52,58 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
-	auto installationLocation = Windows::ApplicationModel::Package::Current->InstalledLocation;
-
-	task<StorageFile^> getStartupInfo(installationLocation->GetFileAsync(STARTUP_FILE));
-
-	getStartupInfo.then([=](StorageFile^ storageFile)
+	create_task(localFolder->GetFileAsync("package.json")).then([=](StorageFile^ storageFile)
 	{
-		task<XmlDocument^> getStartupInfoXml(XmlDocument::LoadFromFileAsync(storageFile));
-
-		getStartupInfoXml.then([=](XmlDocument^ startupInfoXml)
+		create_task(FileIO::ReadTextAsync(storageFile)).then([=](String^ jsonStr)
 		{
 			vector<shared_ptr<char>> argumentVector;
 
 			shared_ptr<char> argChar = WCharToChar(L" ", 1);
 			argumentVector.push_back(argChar);
 
-			XmlNodeList^ argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/NodeOptions");
-			PopulateArgsVector(argumentVector, argumentNodes, false, &useLogger);
+			JsonObject^ jsonObj = JsonObject::Parse(jsonStr);
 
-			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/Script");
-			PopulateArgsVector(argumentVector, argumentNodes, true, &useLogger);
+			// First check 'scripts' for the script to start
+			String^ startStr;
+			try
+			{
+				JsonObject^ scriptsObj = jsonObj->GetNamedObject("scripts");
+				startStr = scriptsObj->GetNamedString("start");
+			}
+			catch (Exception^ e) {
+				if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
+				{
+					throw;
+				}
+			}
+			if (nullptr != startStr)
+			{
+				PopulateArgsVector(argumentVector, startStr, useLogger);
+			}
+			// If 'scripts' isn't found check for 'main'
+			else
+			{
+				try
+				{
+					startStr = jsonObj->GetNamedString("main");
+				}
+				catch (Exception^ e) {
+					if (e->HResult != WEB_E_JSON_VALUE_NOT_FOUND)
+					{
+						throw;
+					}
+				}
 
-			argumentNodes = startupInfoXml->SelectNodes(L"StartupInfo/ScriptArgs");
-			PopulateArgsVector(argumentVector, argumentNodes, false, &useLogger);
+				if (nullptr != startStr)
+				{
+					PopulateArgsVector(argumentVector, startStr, useLogger);
+				}
+				else
+				{
+					deferral->Complete();
+					std::exit(ERROR_INVALID_DATA);
+				}
+			}
 
 			int argc = argumentVector.size();
 
@@ -88,16 +114,18 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 				argv.get()[i] = (argumentVector[i]).get();
 			}
 
+			int exitCode = 0;
 			if (!useLogger)
 			{
-				node::Start(argc, argv.get());
+				exitCode = node::Start(argc, argv.get());
 			}
 			else
 			{
-				node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
+				exitCode = node::Start(argc, argv.get(), &Logger::GetInstance("nodeuwp.log"));
 			}
 
 			deferral->Complete();
+			std::exit(exitCode);
 		});
 	});
 }
