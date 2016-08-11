@@ -236,6 +236,9 @@
     <AppxManifest Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </AppxManifest>
+    <None Include="$(NODE_DIR)\$(Configuration)\node.dll">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="nodeuwpui_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>

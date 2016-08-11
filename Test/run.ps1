@@ -133,12 +133,13 @@ if([string]::IsNullOrEmpty($appl)) {
 }
 
 $appxFolderPath = $app.TrimEnd('\')
+$appxFolderPath += '\'
 $testSrcPath = $test
 $appLauncherPath = $appl
 
 # Install appx certificate to TrustedPeople
 $cerFileName = Get-Childitem -path $appxFolderPath -filter *.cer
-$certPath = $appxFolderPath + '\' + $cerFileName
+$certPath = $appxFolderPath + $cerFileName
 Import-Certificate -FilePath $certPath -CertStoreLocation cert:\LocalMachine\TrustedPeople
 
 
