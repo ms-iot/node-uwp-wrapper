@@ -105,7 +105,7 @@ namespace nodeuwputil
 			wstring arg;
 			shared_ptr<char> in;
 			bool insert = false;
-			bool scriptFound = false;		
+			bool scriptFound = false;
 
 			for (size_t i = 0; i < args.length(); i++) {
 
@@ -120,7 +120,7 @@ namespace nodeuwputil
 					while (args[i] != '\"' && i < args.size())
 					{ 
 						arg += args[i];
-						i++; 
+						i++;
 					}
 					i++;
 					insert = true;
@@ -144,18 +144,21 @@ namespace nodeuwputil
 						continue;
 					}
 
+					// Update the script path.
+					// The script to start will be the first argument that doesn't start with '-'.
+					// Node usage: node [options] [v8 options] [script.js | -e "script"] [arguments]
+					// 'options' and 'v8 options' start with '-'
+					if (arg[0] != '-' && scriptFound == false)
+					{
+						scriptFound = true;
+						arg = localFolder + arg;
+					}
+
 					if (arg.compare(L"--use-logger") == 0)
 					{
 						useLogger = true;
 						arg.clear();
 						continue;
-					}
-
-					// The first '*.js' argument will be considered as the script to start
-					if (arg.find(L".js") != string::npos && scriptFound == false)
-					{
-						scriptFound = true;
-						arg = localFolder + arg;
 					}
 
 					in = WCharToChar(arg.c_str(), arg.size());
