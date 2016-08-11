@@ -48,7 +48,7 @@ for each test, and logs results to a file. For more information, take a look at 
 * Clone this repository.
 * Copy Test/nodeuwp.testinfo to your Documents folder (i.e. C:\Users\YourUserName\Documents) and update depending
   on what you want to run. Take a look at the comments in [Test\run.ps1](Test/run.ps1) to see how to do this.
-* Build the Headed application in the Developer Command Prompt for VS2015 (Healess app is currently no supported for testing)
+* Build the Headed application in the Developer Command Prompt for VS2015 (Headless app is currently no supported for testing)
 
 ```batch
 msbuild Headed\nodeuwpui.sln /p:configuration=[release|debug] /p:platform=[x86|x64|arm]
