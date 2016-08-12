@@ -266,13 +266,10 @@
     <ClCompile Include="StartupTask.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\my_node\Debug\node.dll">
+    <None Include="$(NODE_DIR)\$(Configuration)\node.dll">
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="nodeuwp_TemporaryKey.pfx" />
-    <None Include="package.json">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <SDKReference Include="WindowsIoT, Version=10.0.10586.0" />
