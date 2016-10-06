@@ -50,6 +50,10 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 	// or folders relative to the location of the starup JavaScript file
 	CopyFolderSync(appFolder, localFolder);
 
+	// Extract node_modules folder into local storage folder
+	StorageFile^ zipFile = create_task(localFolder->GetFileAsync("node_modules.zip")).get();
+	Extract(zipFile, localFolder->Path + "\\node_modules");
+
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
 
 	create_task(localFolder->GetFileAsync("package.json")).then([=](StorageFile^ storageFile)
