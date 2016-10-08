@@ -270,12 +270,6 @@
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="nodeuwp_TemporaryKey.pfx" />
-    <None Include="node_modules.hash">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="node_modules.zip">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
