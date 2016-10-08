@@ -44,4 +44,6 @@ namespace nodeuwputil
 	void CopyFolderSync(StorageFolder^ source, StorageFolder^ destination);
 
 	void Extract(StorageFile^ zipFile, String^ destination);
+
+	bool ModuleUpdateRequired();
 }

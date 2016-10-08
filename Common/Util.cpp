@@ -31,10 +31,12 @@ THE SOFTWARE.
 #include <direct.h>
 
 #define WRITEBUFFERSIZE 8192
-#define NODE_MODULE_MAX_PATH 1024 
+#define NODE_MODULE_MAX_PATH 1024
+#define MD5HASHSIZE 16
 
 using namespace Platform;
 using namespace std::tr2::sys;
+using namespace concurrency;
 
 namespace nodeuwputil
 {
@@ -374,6 +376,89 @@ namespace nodeuwputil
 		}
 	}
 
+	bool CompareHashFiles(char* file1, int file1Size, char* file2, int file2Size)
+	{
+		FILE* f1 = NULL;
+		FILE* f2 = NULL;
+		bool ret = true;
+
+		int err = fopen_s(&f1, file1, "r");
+		if (err != 0)
+		{
+			throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fopen_s failed. Filename: " +
+				ref new String(CharToWChar(file1, file1Size).get()));
+		}
+		err = fopen_s(&f2, file2, "r");
+		if (err != 0)
+		{
+			throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fopen_s failed. Filename: " +
+				ref new String(CharToWChar(file2, file2Size).get()));
+		}
+
+		char b1[MD5HASHSIZE];
+		char b2[MD5HASHSIZE];
+
+		for (int i = 0; i < MD5HASHSIZE; i++)
+		{
+			int bytesRead = fread(b1, 1, 1, f1);
+			if (bytesRead != 1)
+			{
+				throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fread failed");
+			}
+			fread(b2, 1, 1, f2);
+			if (bytesRead != 1)
+			{
+				throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fread failed");
+			}
+
+			if (b1[i] != b2[i])
+			{
+				ret = false;
+			}
+		}
+
+		fclose(f1);
+		fclose(f2);
+		return ret;
+	}
+
+	bool ModuleUpdateRequired()
+	{
+		StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
+		StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
+
+		String^ currHashFile;
+
+		try
+		{
+			currHashFile = create_task(localFolder->GetFileAsync("node_modules.hash")).get()->Path;
+		}
+		catch (Exception^ e) {
+			if (e->HResult != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+			{
+				throw;
+			}
+			else
+			{
+				return true;
+			}
+		}
+
+		String^ newHashFile = create_task(appFolder->GetFileAsync("node_modules.hash")).get()->Path;
+
+		bool hashesAreEqual = CompareHashFiles(WCharToChar(newHashFile->Data(), newHashFile->Length()).get(), newHashFile->Length(),
+			WCharToChar(currHashFile->Data(), currHashFile->Length()).get(), currHashFile->Length());
+
+		if (hashesAreEqual)
+		{
+			// No update required if the hashes match
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
 
 	void Extract(StorageFile^ zipFile, String^ destination)
 	{
