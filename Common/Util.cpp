@@ -184,91 +184,94 @@ namespace nodeuwputil
 		copy(from, to, opts);
 	}
 
-    // Based on https://github.com/madler/zlib/blob/master/contrib/minizip/miniunz.c#L138
-	void MakePath(const char *newdir)
+	void MakePath(String^ rootDir, String^ newDir)
 	{
-		char *buffer;
-		char *p;
-		int  len = (int)strlen(newdir);
-		int err;
+		wstring rootdir(rootDir->Data());
+		wstring newdir(newDir->Data());
+		vector<wchar_t*> subdirs;
+		wchar_t *nextTok = NULL;
+		StorageFolder^ storagefolder;
 
-		if (len <= 0)
+		// rootdir is expected to be the substring at the beginning of newdir. We first
+		// get the subpath that's after the root, split the subpath to get the subfolder
+		// names, and then iteratively make calls to CreateFolderAsync to create them.
+		const wchar_t* subpath = newdir.erase(0, rootdir.length() + 1).c_str();
+		wchar_t* tok = wcstok_s((wchar_t*)subpath, L"\\", &nextTok);
+
+		while (tok != NULL)
 		{
-			return;
+			subdirs.push_back(tok);
+			tok = wcstok_s(NULL, L"\\", &nextTok);
 		}
 
-		buffer = (char*)malloc(len + 1);
-		if (buffer == NULL)
+		// Create root folder if it doesn't exist.
+		try
 		{
-			throw ref new ::Platform::Exception(HRESULT_FROM_WIN32(ERROR_OUTOFMEMORY), 
-				L"nodeuwputil::MakePath Error allocating memory");
+			storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(rootDir)).get();
 		}
-		strcpy_s(buffer, (len + 1), newdir);
-
-		if (buffer[len - 1] == '/') {
-			buffer[len - 1] = '\0';
-		}
-		
-		err = _mkdir(buffer);
-		if (err == 0)
+		catch (Exception^ e)
 		{
-			return;
-		}
-
-		p = buffer + 1;
-		while (1)
-		{
-			char hold;
-
-			while (*p && *p != '\\' && *p != '/')
-				p++;
-			hold = *p;
-			*p = 0;
-			err = _mkdir(buffer);
-			if (err == -1 && (errno == ENOENT))
+			if (e->HResult != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
-				throw ref new ::Platform::Exception(HRESULT_FROM_WIN32(errno), L"nodeuwputil::MakePath _mkdir failed. Directory: " +
-					ref new String(CharToWChar(buffer, (len + 1)).get()));
+				throw;
 			}
-			if (hold == 0)
-				break;
-			*p++ = hold;
+			else
+			{
+				// Need _wmkdir for the root since we can't make a folder from a path that doesn't exist yet
+				int err = _wmkdir(rootDir->Data());
+				if (0 != err)
+				{
+					throw ref new ::Platform::Exception(err, L"nodeuwputil::MakePath _mkdir failed. Directory: " + rootDir);
+				}
+				else
+				{
+					storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(rootDir)).get();
+				}
+			}
 		}
-		free(buffer);
+
+		for (vector<wchar_t*>::iterator it = subdirs.begin(); it != subdirs.end(); ++it)
+		{
+			try
+			{
+				storagefolder = create_task(storagefolder->CreateFolderAsync(ref new String(*it))).get();
+			}
+			catch (Exception^ e) 
+			{
+				if (e->HResult != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS))
+				{
+					throw;
+				}
+				else
+				{
+					storagefolder = create_task(storagefolder->GetFolderAsync(ref new String(*it))).get();
+				}
+			}
+		}
 	}
 
 	// Based on https://github.com/ms-iot/node/blob/chakra-uwp/deps/zlib/contrib/minizip/miniunz.c#L312
-	void DoExtractCurrentfile(unzFile uf, char* dest)
+	int DoExtractCurrentfile(unzFile uf, String^ dest)
 	{
 		char filename_inzip[NODE_MODULE_MAX_PATH];
 		char* filename_withoutpath;
 		char* p;
 		FILE *fout = NULL;
-		void* buf;
-		uInt size_buf;
 		unz_file_info64 file_info;
 		uLong ratio = 0;
 
 		int err = unzGetCurrentFileInfo64(uf, &file_info, filename_inzip, sizeof(filename_inzip), NULL, 0, NULL, 0);
 		if (err != UNZ_OK)
 		{
-			throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile unzGetCurrentFileInfo64 failed. Filename: " + 
-				ref new String(CharToWChar(filename_inzip, sizeof(filename_inzip)).get()));
+			return err;
 		}
 
 		// Prepend the destination to the path (filename_inzip)
 		char temp[NODE_MODULE_MAX_PATH];
 		strcpy_s(temp, NODE_MODULE_MAX_PATH, filename_inzip);
-		strcpy_s(filename_inzip, NODE_MODULE_MAX_PATH, dest);
+		strcpy_s(filename_inzip, NODE_MODULE_MAX_PATH, WCharToChar(dest->Data(), dest->Length()).get());
 		strcat_s(filename_inzip, NODE_MODULE_MAX_PATH, "\\");
 		strcat_s(filename_inzip, NODE_MODULE_MAX_PATH, temp);
-
-		size_buf = WRITEBUFFERSIZE;
-		buf = (void*)malloc(size_buf);
-		if (buf == NULL)
-		{
-			throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile Error allocating memory");
-		}
 
 		p = filename_withoutpath = filename_inzip;
 		while ((*p) != '\0')
@@ -285,14 +288,15 @@ namespace nodeuwputil
 			err = _mkdir(filename_inzip);
 			if (0 != err)
 			{
-				throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile _mkdir failed. Directory: " +
-					ref new String(CharToWChar(filename_inzip, sizeof(filename_inzip)).get()));
+				return err;
 			}
 		}
 		else
 		{
 			const char* write_filename = filename_inzip;
 
+			// Needs to be called even when zip has no password
+			err = unzOpenCurrentFilePassword(uf, 0);
 			if (err == UNZ_OK)
 			{
 				fopen_s(&fout, write_filename, "wb");
@@ -301,57 +305,56 @@ namespace nodeuwputil
 				{
 					char c = *(filename_withoutpath - 1);
 					*(filename_withoutpath - 1) = '\0';
-					MakePath(write_filename);
+					MakePath(dest, ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
 					*(filename_withoutpath - 1) = c;
 					fopen_s(&fout, write_filename, "wb");
 				}
-
-				if (fout == NULL)
-				{
-					throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile fopen_s failed. Filename: " +
-						ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
-				}
-			}
-
-			// Needs to be called even when zip has no password
-			err = unzOpenCurrentFilePassword(uf, 0);
-			if (err != UNZ_OK)
-			{
-				throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile unzOpenCurrentFilePassword failed");
 			}
 
 			if (fout != NULL)
 			{
+				shared_ptr<byte> buf(new byte[WRITEBUFFERSIZE], [](byte* ptr) { delete[] ptr; });
+
 				do
 				{
-					err = unzReadCurrentFile(uf, buf, size_buf);
+					err = unzReadCurrentFile(uf, buf.get(), WRITEBUFFERSIZE);
 					if (err < 0)
 					{
-						throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtractCurrentfile unzReadCurrentFile failed. Filename: " +
-							ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
+						break;
 					}
 					if (err > 0)
 					{
-						// TODO: See if there would be improvement by only overwritting if timestamp has changed
-						if (fwrite(buf, err, 1, fout) != 1)
+						if (fwrite(buf.get(), err, 1, fout) != 1)
 						{
-							throw ref new ::Platform::Exception(errno, L"nodeuwputil::DoExtractCurrentfile fwrite failed. Filename: " +
-								ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
+							err = UNZ_ERRNO;
+							break;
 						}
 					}
-				} while (err > 0);
+				} 
+				while (err > 0);
 
-				fclose(fout);
+				if (fout)
+				{
+					fclose(fout);
+				}
+
 			}
 
-			unzCloseCurrentFile(uf);
+			if (err == UNZ_OK)
+			{
+				err = unzCloseCurrentFile(uf);
+			}
+			else 
+			{
+				unzCloseCurrentFile(uf); /* don't lose the error */
+			}
 		}
 
-		free(buf);
+		return err;
 	}
 
 	// Based on https://github.com/ms-iot/node/blob/chakra-uwp/deps/zlib/contrib/minizip/miniunz.c#L475
-	void DoExtract(unzFile uf, char* dest)
+	int DoExtract(unzFile uf, String^ dest)
 	{
 		unz_global_info64 gi;
 
@@ -363,37 +366,48 @@ namespace nodeuwputil
 
 		for (uLong i = 0; i < gi.number_entry; i++)
 		{
-			DoExtractCurrentfile(uf, dest);
+			err = DoExtractCurrentfile(uf, dest);
+			if (err != UNZ_OK)
+			{
+				return err;
+			}
 
 			if ((i + 1) < gi.number_entry)
 			{
 				err = unzGoToNextFile(uf);
 				if (err != UNZ_OK)
 				{
-					throw ref new ::Platform::Exception(err, L"nodeuwputil::DoExtract unzGoToNextFile failed");
+					return err;
 				}
 			}
 		}
+
+		return err;
 	}
 
-	bool CompareHashFiles(char* file1, int file1Size, char* file2, int file2Size)
+	int CompareHashFiles(char* file1, int file1Size, char* file2, int file2Size, bool& isEqual)
 	{
 		FILE* f1 = NULL;
 		FILE* f2 = NULL;
-		bool ret = true;
+		int err;
+		isEqual = true;
 
-		int err = fopen_s(&f1, file1, "r");
+		err = fopen_s(&f1, file1, "r");
 		if (err != 0)
 		{
-			throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fopen_s failed. Filename: " +
-				ref new String(CharToWChar(file1, file1Size).get()));
+			return err;
 		}
+
 		err = fopen_s(&f2, file2, "r");
 		if (err != 0)
 		{
-			throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fopen_s failed. Filename: " +
-				ref new String(CharToWChar(file2, file2Size).get()));
+			if (f1)
+			{
+				fclose(f1);
+			}
+			return err;
 		}
+
 
 		char b1[MD5HASHSIZE];
 		char b2[MD5HASHSIZE];
@@ -403,23 +417,33 @@ namespace nodeuwputil
 			int bytesRead = fread(b1, 1, 1, f1);
 			if (bytesRead != 1)
 			{
-				throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fread failed");
+				err = UNZ_INTERNALERROR;
+				break;
 			}
 			fread(b2, 1, 1, f2);
 			if (bytesRead != 1)
 			{
-				throw ref new ::Platform::Exception(err, L"nodeuwputil::CompareHashFiles fread failed");
+				err = UNZ_INTERNALERROR;
+				break;
 			}
 
 			if (b1[i] != b2[i])
 			{
-				ret = false;
+				//isEqual = false;
+				break;
 			}
 		}
 
-		fclose(f1);
-		fclose(f2);
-		return ret;
+
+		if (f1)
+		{
+			fclose(f1);
+		}
+		if (f2)
+		{
+			fclose(f2);
+		}
+		return err;
 	}
 
 	bool ModuleUpdateRequired()
@@ -428,12 +452,15 @@ namespace nodeuwputil
 		StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
 
 		String^ currHashFile;
+		bool hashesAreEqual;
+		int err;
 
 		try
 		{
 			currHashFile = create_task(localFolder->GetFileAsync("node_modules.hash")).get()->Path;
 		}
-		catch (Exception^ e) {
+		catch (Exception^ e) 
+		{
 			if (e->HResult != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
 				throw;
@@ -446,17 +473,24 @@ namespace nodeuwputil
 
 		String^ newHashFile = create_task(appFolder->GetFileAsync("node_modules.hash")).get()->Path;
 
-		bool hashesAreEqual = CompareHashFiles(WCharToChar(newHashFile->Data(), newHashFile->Length()).get(), newHashFile->Length(),
-			WCharToChar(currHashFile->Data(), currHashFile->Length()).get(), currHashFile->Length());
+		err = CompareHashFiles(WCharToChar(newHashFile->Data(), newHashFile->Length()).get(), newHashFile->Length(),
+			WCharToChar(currHashFile->Data(), currHashFile->Length()).get(), currHashFile->Length(), hashesAreEqual);
 
-		if (hashesAreEqual)
+		if (err != UNZ_OK)
 		{
-			// No update required if the hashes match
 			return false;
 		}
 		else
 		{
-			return true;
+			if (hashesAreEqual)
+			{
+				// No update required if the hashes match
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 	}
 
@@ -464,12 +498,18 @@ namespace nodeuwputil
 	{
 		shared_ptr<char> zipFileCharStr = WCharToChar(zipFile->Path->Data(), zipFile->Path->Length());
 		unzFile uf = unzOpen64(zipFileCharStr.get());
+		int err;
 
 		if (uf)
 		{
-			DoExtract(uf, WCharToChar(destination->Data(), destination->Length()).get());
+			err = DoExtract(uf, destination);
 
 			unzClose(uf);
+
+			if (err != UNZ_OK)
+			{
+				throw ref new ::Platform::Exception(err, L"nodeuwputil::Extract error");
+			}
 		}
 		else
 		{
