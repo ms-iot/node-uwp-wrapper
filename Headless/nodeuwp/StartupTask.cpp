@@ -46,12 +46,19 @@ void StartupTask::Run(IBackgroundTaskInstance^ taskInstance)
 	StorageFolder^ appFolder = Windows::ApplicationModel::Package::Current->InstalledLocation;
 	StorageFolder^ localFolder = ApplicationData::Current->LocalFolder;
 
+	// Extract node_modules folder into local storage folder
+	if (ModuleUpdateRequired())
+	{
+		StorageFile^ zipFile = create_task(appFolder->GetFileAsync("node_modules.zip")).get();
+		Extract(zipFile, localFolder->Path + "\\node_modules");
+	}
+
 	// Copy files to this applications local storage so that node can read/write to files
 	// or folders relative to the location of the starup JavaScript file
 	CopyFolderSync(appFolder, localFolder);
 
 	BackgroundTaskDeferral^ deferral = taskInstance->GetDeferral();
-
+	
 	create_task(localFolder->GetFileAsync("package.json")).then([=](StorageFile^ storageFile)
 	{
 		create_task(FileIO::ReadTextAsync(storageFile)).then([=](String^ jsonStr)
