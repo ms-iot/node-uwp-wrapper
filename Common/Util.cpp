@@ -180,63 +180,70 @@ namespace nodeuwputil
 	{
 		path from(source->Path->Data());
 		path to(destination->Path->Data());
-		copy_options opts = copy_options::recursive | copy_options::update_existing;
+		copy_options opts = copy_options::recursive | copy_options::overwrite_existing;
 		copy(from, to, opts);
 	}
 
-	void MakePath(String^ rootDir, String^ newDir)
+	int MakePath(String^ newDir)
 	{
-		wstring rootdir(rootDir->Data());
 		wstring newdir(newDir->Data());
-		vector<wchar_t*> subdirs;
+		vector<String^> subdirs;
 		wchar_t *nextTok = NULL;
 		StorageFolder^ storagefolder;
 
-		// rootdir is expected to be the substring at the beginning of newdir. We first
-		// get the subpath that's after the root, split the subpath to get the subfolder
-		// names, and then iteratively make calls to CreateFolderAsync to create them.
-		const wchar_t* subpath = newdir.erase(0, rootdir.length() + 1).c_str();
-		wchar_t* tok = wcstok_s((wchar_t*)subpath, L"\\", &nextTok);
+		wchar_t* tok = wcstok_s((wchar_t*)newDir->Data(), L"\\", &nextTok);
 
 		while (tok != NULL)
 		{
-			subdirs.push_back(tok);
+			subdirs.push_back(ref new String(tok));
 			tok = wcstok_s(NULL, L"\\", &nextTok);
 		}
 
-		// Create root folder if it doesn't exist.
-		try
-		{
-			storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(rootDir)).get();
-		}
-		catch (Exception^ e)
-		{
-			if (e->HResult != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		// Walk the path until we get a valid StorageFolder object.
+		// This function will fail if path provided isn't abosolute.
+		// In future if needed this can be modified.
+		newDir = subdirs.at(0);
+		subdirs.erase(subdirs.begin());
+		vector<String^>::iterator it = subdirs.begin();
+		
+		for (; it != subdirs.end(); ++it)
+		{		
+			newDir = newDir + "\\" + *it;
+
+			try
 			{
-				throw;
+				storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(newDir)).get();
+				break;
 			}
-			else
+			catch (Exception^ e)
 			{
-				// Need _wmkdir for the root since we can't make a folder from a path that doesn't exist yet
-				int err = _wmkdir(rootDir->Data());
-				if (0 != err)
+				if (e->HResult != HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED))
 				{
-					throw ref new ::Platform::Exception(err, L"nodeuwputil::MakePath _mkdir failed. Directory: " + rootDir);
+					throw;
 				}
 				else
 				{
-					storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(rootDir)).get();
+					continue;
 				}
 			}
+			
 		}
 
-		for (vector<wchar_t*>::iterator it = subdirs.begin(); it != subdirs.end(); ++it)
+		if (storagefolder == nullptr)
 		{
+			return UNZ_INTERNALERROR;
+		}
+
+		// Create the folders that don't exist
+		advance(it, 1);
+		for (; it != subdirs.end(); ++it)
+		{
+			String^ temp = *it;
 			try
 			{
-				storagefolder = create_task(storagefolder->CreateFolderAsync(ref new String(*it))).get();
+				storagefolder = create_task(storagefolder->CreateFolderAsync(*it)).get();
 			}
-			catch (Exception^ e) 
+			catch (Exception^ e)
 			{
 				if (e->HResult != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS))
 				{
@@ -244,7 +251,7 @@ namespace nodeuwputil
 				}
 				else
 				{
-					storagefolder = create_task(storagefolder->GetFolderAsync(ref new String(*it))).get();
+					storagefolder = create_task(storagefolder->GetFolderAsync(*it)).get();
 				}
 			}
 		}
@@ -305,7 +312,7 @@ namespace nodeuwputil
 				{
 					char c = *(filename_withoutpath - 1);
 					*(filename_withoutpath - 1) = '\0';
-					MakePath(dest, ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
+					MakePath(ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
 					*(filename_withoutpath - 1) = c;
 					fopen_s(&fout, write_filename, "wb");
 				}
@@ -390,7 +397,7 @@ namespace nodeuwputil
 		FILE* f1 = NULL;
 		FILE* f2 = NULL;
 		int err;
-		isEqual = true;
+		isEqual = false;
 
 		err = fopen_s(&f1, file1, "r");
 		if (err != 0)
@@ -408,32 +415,29 @@ namespace nodeuwputil
 			return err;
 		}
 
-
 		char b1[MD5HASHSIZE];
 		char b2[MD5HASHSIZE];
 
-		for (int i = 0; i < MD5HASHSIZE; i++)
+		int bytesRead = fread(b1, 1, MD5HASHSIZE, f1);
+		if (bytesRead != MD5HASHSIZE)
 		{
-			int bytesRead = fread(b1, 1, 1, f1);
-			if (bytesRead != 1)
+			err = UNZ_INTERNALERROR;
+		}
+		else
+		{
+			bytesRead = fread(b2, 1, MD5HASHSIZE, f2);
+			if (bytesRead != MD5HASHSIZE)
 			{
 				err = UNZ_INTERNALERROR;
-				break;
 			}
-			fread(b2, 1, 1, f2);
-			if (bytesRead != 1)
+			else
 			{
-				err = UNZ_INTERNALERROR;
-				break;
-			}
-
-			if (b1[i] != b2[i])
-			{
-				//isEqual = false;
-				break;
+				if (0 == memcmp(b1, b2, MD5HASHSIZE))
+				{
+					isEqual = true;
+				}			
 			}
 		}
-
 
 		if (f1)
 		{
