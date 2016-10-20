@@ -184,77 +184,53 @@ namespace nodeuwputil
 		copy(from, to, opts);
 	}
 
-	int MakePath(String^ newDir)
+	// Based on https://github.com/ms-iot/node/blob/chakra-uwp/deps/zlib/contrib/minizip/miniunz.c#L138
+	int MakePath(char* newdir, int len)
 	{
-		wstring newdir(newDir->Data());
-		vector<String^> subdirs;
-		wchar_t *nextTok = NULL;
-		StorageFolder^ storagefolder;
+		char *buffer;
+		char *p;
 
-		wchar_t* tok = wcstok_s((wchar_t*)newDir->Data(), L"\\", &nextTok);
-
-		while (tok != NULL)
+		if (len <= 0)
 		{
-			subdirs.push_back(ref new String(tok));
-			tok = wcstok_s(NULL, L"\\", &nextTok);
+			return 0;
 		}
 
-		// Walk the path until we get a valid StorageFolder object.
-		// This function will fail if path provided isn't abosolute.
-		// In future if needed this can be modified.
-		newDir = subdirs.at(0);
-		subdirs.erase(subdirs.begin());
-		vector<String^>::iterator it = subdirs.begin();
-		
-		for (; it != subdirs.end(); ++it)
-		{		
-			newDir = newDir + "\\" + *it;
-
-			try
-			{
-				storagefolder = create_task(StorageFolder::GetFolderFromPathAsync(newDir)).get();
-				break;
-			}
-			catch (Exception^ e)
-			{
-				if (e->HResult != HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED))
-				{
-					throw;
-				}
-				else
-				{
-					continue;
-				}
-			}
-			
-		}
-
-		if (storagefolder == nullptr)
+		buffer = (char*)malloc(len + 1);
+		if (buffer == NULL)
 		{
 			return UNZ_INTERNALERROR;
 		}
+		strcpy_s(buffer, len, newdir);
 
-		// Create the folders that don't exist
-		advance(it, 1);
-		for (; it != subdirs.end(); ++it)
-		{
-			String^ temp = *it;
-			try
-			{
-				storagefolder = create_task(storagefolder->CreateFolderAsync(*it)).get();
-			}
-			catch (Exception^ e)
-			{
-				if (e->HResult != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS))
-				{
-					throw;
-				}
-				else
-				{
-					storagefolder = create_task(storagefolder->GetFolderAsync(*it)).get();
-				}
-			}
+		if (buffer[len - 1] == '/') {
+			buffer[len - 1] = '\0';
 		}
+		if (_mkdir(buffer) == 0)
+		{
+			free(buffer);
+			return 1;
+		}
+
+		p = buffer + 1;
+		while (1)
+		{
+			char hold;
+
+			while (*p && *p != '\\' && *p != '/')
+				p++;
+			hold = *p;
+			*p = 0;
+			if ((_mkdir(buffer) == -1) && (errno == ENOENT))
+			{
+				free(buffer);
+				return 0;
+			}
+			if (hold == 0)
+				break;
+			*p++ = hold;
+		}
+		free(buffer);
+		return 1;
 	}
 
 	// Based on https://github.com/ms-iot/node/blob/chakra-uwp/deps/zlib/contrib/minizip/miniunz.c#L312
@@ -292,11 +268,7 @@ namespace nodeuwputil
 
 		if ((*filename_withoutpath) == '\0')
 		{
-			err = _mkdir(filename_inzip);
-			if (0 != err)
-			{
-				return err;
-			}
+			_mkdir(filename_inzip);
 		}
 		else
 		{
@@ -312,7 +284,7 @@ namespace nodeuwputil
 				{
 					char c = *(filename_withoutpath - 1);
 					*(filename_withoutpath - 1) = '\0';
-					MakePath(ref new String(CharToWChar(write_filename, sizeof(filename_inzip)).get()));
+					MakePath(filename_inzip, sizeof(filename_inzip));
 					*(filename_withoutpath - 1) = c;
 					fopen_s(&fout, write_filename, "wb");
 				}
@@ -373,23 +345,21 @@ namespace nodeuwputil
 
 		for (uLong i = 0; i < gi.number_entry; i++)
 		{
-			err = DoExtractCurrentfile(uf, dest);
-			if (err != UNZ_OK)
+			if (DoExtractCurrentfile(uf, dest) != UNZ_OK)
 			{
-				return err;
+				break;
 			}
 
 			if ((i + 1) < gi.number_entry)
 			{
-				err = unzGoToNextFile(uf);
-				if (err != UNZ_OK)
+				if (unzGoToNextFile(uf) != UNZ_OK)
 				{
-					return err;
+					break;
 				}
 			}
 		}
 
-		return err;
+		return 0;
 	}
 
 	int CompareHashFiles(char* file1, int file1Size, char* file2, int file2Size, bool& isEqual)
