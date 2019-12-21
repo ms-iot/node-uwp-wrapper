@@ -1,4 +1,4 @@
-##Node.js UWP Wrapper
+## Node.js UWP Wrapper
 
 This project is a Universal Windows Platform (UWP) application that wraps Node.js and enables deployment to Windows 10 devices from Visual Studio.
 The application is packaged into the [Node.js Tools for UWP Apps](http://aka.ms/ntvsiotlatest) installer. These tools provide the ability
@@ -15,14 +15,14 @@ During deployment, the NTVS IoT extension will create a UWP package that contain
 
 To get started, take a look at the "Hello World" sample [here](http://ms-iot.github.io/content/en-US/win10/samples/NodejsWU.htm).
 
-##To build
+## To build
 
-####Prerequisites:
+#### Prerequisites:
 * Windows 10
 * [Python 2.6 or 2.7](https://www.python.org)
 * [Visual Studio 2015 with Windows 10 SDK](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx)
 
-####Steps:
+#### Steps:
 * Clone the Node.js (Chakra) branch [here](https://aka.ms/node-uwp). 
 * Set an environment variable on your PC called NODE_DIR with the path of the clone (don't include trailing slash).
 * Checkout the 'chakra-uwp' branch and build with:
@@ -39,7 +39,7 @@ msbuild Headless\nodeuwp.sln /p:configuration=[release|debug] /p:platform=[x86|x
 ```
 
   
-##Testing
+## Testing
 
 Use the following instructions to test [node.dll](https://github.com/ms-iot/node) in the UWP wrapper. [Node.js tests](https://github.com/ms-iot/node/tree/chakra-uwp/test) 
 can be run using the [Test\run.ps1](Test/run.ps1) PowerShell script. The script takes input from a nodeuwp.testinfo file (with a list of tests to run), launches the app
